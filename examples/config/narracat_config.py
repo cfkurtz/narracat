@@ -82,7 +82,7 @@ INCLUDE_QUESTION_NUMBER_QUESTION = False
 # ways to identify special fields - teller, name, text of story
 RESPONDENT_ID_FIELD = "Name of participant"
 STORY_TITLE_FIELD = "Story title"
-STORY_TEXT_FIELD = "Story text"
+STORY_TEXT_FIELD = "Text"
 
 # more on how things are arrayed in the data file
 

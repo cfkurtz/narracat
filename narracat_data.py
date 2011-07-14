@@ -963,13 +963,13 @@ def themeCountsForSelectedStories(stories, themeFileName):
 			storyTitle = row[0].strip()
 			if storyTitle:
 				themesForThisStory = []
-				firstTheme = row[1].strip()
+				firstTheme = row[2].strip()
 				if firstTheme:
 					themesForThisStory.append(firstTheme)
-				secondTheme = row[2].strip()
+				secondTheme = row[3].strip()
 				if secondTheme:
 					themesForThisStory.append(secondTheme)
-				thirdTheme = row[3].strip()
+				thirdTheme = row[4].strip()
 				if thirdTheme:
 					themesForThisStory.append(thirdTheme)
 				storyTitlesAndThemes[storyTitle] = themesForThisStory
