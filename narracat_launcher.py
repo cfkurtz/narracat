@@ -152,8 +152,9 @@ class NarracatLauncher(Frame):
 			function()
 			
 	def loadFile(self):
+		forceReread = self.readCSVCheckBoxState.get()
 		self.questions, self.respondents, self.stories = readData(DATA_PATH + PICKLE_FILE_NAME, 
-				DATA_FILE_PATH, LABELS_FILE_PATH, forceReread=self.readCSVCheckBoxState.get())
+				DATA_FILE_PATH, LABELS_FILE_PATH, forceReread=forceReread)
 		self.browser.questions = self.questions
 		self.browser.respondents = self.respondents
 		self.browser.stories = self.stories
