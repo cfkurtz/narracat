@@ -1,0 +1,66 @@
+"Field Number","Field ID","About story, about participant or discard","Question text","Short Question Text","Codes in file","Long Response Labels","Short Response Labels","Lumped short response labels","Response Type"
+"; this is a column in the data file you don't want to read",,,,,,,,,
+,"Something you don't want","discard",,,,,,,
+"; this is the story title; it has to match the field ID given in the config file so narracat knows this is the story title",,,,,,,,,
+,"Story title","story","Title","Title",,,,,"Other Text Box"
+"; this is the story text; like title it must match the name in the config file",,,,,,,,,
+,"Text","story","Text","Text",,,,,"Story Text Box"
+"; this column identifies the participant, not a story",,,,,,,,,
+,"Name of participant","participant","Name of participant","Name of participant",,,,,"Other Text Box"
+"; this is a single choice question that covers only one column in the data file; to edit this use ctrl-enter or edit it elsewhere and paste into cell",,,,,,,,,
+,"Scope","story","Scope","Scope","Individual
+Pair
+Group
+Organization","Individual
+Pair
+Group
+Organization","Individual
+Pair
+Group
+Organization","Individual or pair
+Individual or pair
+Group or organization
+Group or organization","Single Value Delimited Radio Buttons"
+"; this is also a single choice question, but it covers multiple columns in the data file; put every choice on a separate line and repeat the question info",,,,,,,,,
+,"Come from","story","Where did this story come from?","Come from","I saw it happen first hand","I saw it happen first hand","first hand","first hand","Single Value Radio Buttons"
+,"Come from","story","Where did this story come from?","Come from","I heard it around but it's true","I heard it around but it's true","heard but true","heard but true","Single Value Radio Buttons"
+,"Come from","story","Where did this story come from?","Come from","it's fictional","it's fictional","fictional","fictional","Single Value Radio Buttons"
+,"Come from","story","Where did this story come from?","Come from","I heard about it second hand","I heard about it second hand","second hand","second hand","Single Value Radio Buttons"
+,"Come from","story","Where did this story come from?","Come from","it's a rumor and I'm not sure if it's true","it's a rumor and I'm not sure if it's true","not sure if true","not sure if true","Single Value Radio Buttons"
+,"Come from","story","Where did this story come from?","Come from","not sure","not sure","not sure","not sure","Single Value Radio Buttons"
+"; this is another single choice question, but this one has an “other” field the user can type into; note that the “other' column is given to a DIFFERENT question of a different type; note also the lumping example",,,,,,,,,
+,"Main character","story","Who was the main character of this story?","Main character","myself","myself","myself","myself","Single Value Radio Buttons"
+,"Main character","story","Who was the main character of this story?","Main character","another employee","another employee","another employee","not myself","Single Value Radio Buttons"
+,"Main character","story","Who was the main character of this story?","Main character","a manager","a manager","a manager","not myself","Single Value Radio Buttons"
+,"Main character","story","Who was the main character of this story?","Main character","an executive","an executive","an executive","not myself","Single Value Radio Buttons"
+,"Main character","story","Who was the main character of this story?","Main character","a family member","a family member","a family member","not myself","Single Value Radio Buttons"
+,"Main character","story","Who was the main character of this story?","Main character","not sure","not sure","not sure","not myself","Single Value Radio Buttons"
+,"Main character","story","Who was the main character of this story?","Main character","other","other","other","not myself","Single Value Radio Buttons"
+,"Main character other","story","If “other”, who was the main character of this story?","Main character other",,,,,"Other Text Box"
+"; this is a multiple choice question; put every choice on a separate line; repeat the question info on each line; use the lumped column to merge answers with few values",,,,,,,,,
+,"Feel about","story","Feel about","Feel about","relieved","relieved","relieved","relieved","Multi Value Check Box"
+,"Feel about","story","Feel about","Feel about","surprised","surprised","surprised","surprised","Multi Value Check Box"
+,"Feel about","story","Feel about","Feel about","hopeful","hopeful","hopeful","hopeful","Multi Value Check Box"
+,"Feel about","story","Feel about","Feel about","angry","angry","angry","angry","Multi Value Check Box"
+,"Feel about","story","Feel about","Feel about","disappointed","disappointed","disappointed","disappointed","Multi Value Check Box"
+,"Feel about","story","Feel about","Feel about","hopeless","hopeless","hopeless","hopeless","Multi Value Check Box"
+,"Feel about","story","Feel about","Feel about","not sure","not sure","not sure","not sure","Multi Value Check Box"
+"; these are sliders; since there are no values specified it uses the constants for min and max specified in the config file; I recommend doing it this way but you can also do it with a row for each possible number and a column for each in the data file",,,,,,,,,
+,"Ending: sad to happy","story","Ending: sad to happy","Ending: sad to happy",,,,,"Matrix Radio Buttons"
+,"Remember: trivial to never forget","story","Remember: trivial to never forget","Remember: trivial to never forget",,,,,"Matrix Radio Buttons"
+,"Trust: absent to abundant",,"Trust: absent to abundant","Trust: absent to abundant",,,,,"Matrix Radio Buttons"
+,"Predictability: none to much",,"Predictability: none to much","Predictability: none to much",,,,,"Matrix Radio Buttons"
+"; another single choice question, this time about the participant",,,,,,,,,
+,"Age group","participant","Age group","Age group","less than 20
+21-40
+41-60
+61 and up","less than 20
+21-40
+41-60
+61 and up","less than 20
+21-40
+41-60
+61 and up","less than 20
+21-40
+41-60
+61 and up","Single Value Delimited Radio Buttons"
