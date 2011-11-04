@@ -384,7 +384,13 @@ class Respondent():
 		
 		if type == TYPE_SINGLE_CHOICE:
 			if type in DATA_TYPES_WITH_CODES:
-				value = self.codeLookup(colDef, cell)
+				if COLUMN_VALUES_ARE_ALL_ONES: 
+					if cell == "1":
+						value = self.codeLookup(colDef, colDef.codes[0])
+					else:
+						value = None
+				else:
+					value = self.codeLookup(colDef, cell)
 				#if cell:
 				#	print '  cell', cell, 'id', colDef.id, 'codes', colDef.codes, 'value', value
 			else:
@@ -462,6 +468,8 @@ class Respondent():
 						#	print '  code', code, 'id', colDef.id, 'codes', colDef.codes, 'value', value
 				else:
 					value = cell
+					if not value:
+						value = DOES_NOT_APPLY
 			if value:
 				valuesToAdd.append(value)
 		
@@ -1152,7 +1160,7 @@ def printDataToCheckItWasReadRight(questions, stories, respondents):
 	print '---------------------------------------------------------'
 	print '---------------------------------------------------------'
 	for respondent in respondents:
-		print respondent.id, len(respondent.stories)
+		print '  respondent with id', respondent.id, 'told', len(respondent.stories), 'stories'
 	print '%s stories, %s respondents, %s questions' % (len(stories), len(respondents), len(questions))
 	
 def printResultForSpecificQuestionID(questions, stories, questionID):

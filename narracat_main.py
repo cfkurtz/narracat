@@ -18,7 +18,7 @@ def main():
 	
 	root = Tk()
 	root.minsize(300,300)
-	root.geometry("1000x1000")
+	root.geometry("1000x800")
 	root.title("NarraCat: Tools for Narrative Catalysis")
 	app = NarracatLauncher(master=root, questions=None, respondents=None, stories=None)
 	app.mainloop()

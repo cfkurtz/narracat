@@ -120,6 +120,7 @@ while i <= SLIDER_END:
 SLIDER_SHORT_NAMES.append(DOES_NOT_APPLY)
 
 # if you want to do a 3D landscape view you should have a slider whose value maps to the Z axis on the 3D graph; this is it
+# if you do not want to use this feature, set this name to None
 STABILITY_QUESTION_NAME = "Predictability: none to much"
 # maybe you asked it backwards from the way you want to look at it?
 STABILITY_QUESTION_VALUE_IS_REVERSED = True
@@ -142,6 +143,10 @@ SLICES.append(ALL_DATA_SLICE)
 # specifications for ternary values (triangles)
 DATA_HAS_TERNARY_SETS = False
 TERNARY_VALUE_DELIMITER = '"'
+
+# this is just to keep the options from cluttering up the window if you don't want to use them
+# remember that to use cluster analysis each respondent must have made the exact same number of scale assignments
+SHOW_CLUSTER_ANALYSIS_OPTIONS = False
 
 # this was for dealing with bug in particular format used in one project; you can almost certainly ignore it
 DATA_HAS_SLIDER_SHIFT_BUG = False
