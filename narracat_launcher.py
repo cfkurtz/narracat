@@ -155,6 +155,9 @@ class NarracatLauncher(Frame):
 		browserFrame.pack(side=RIGHT, fill=BOTH)
 		self.browser = NarracatBrowser(master=browserFrame, questions=self.questions, respondents=self.respondents, stories=self.stories)
 		
+	def quit(self):
+		sys.exit(0)
+	
 	def doOperations(self):
 		commandsToDo = []
 		i = 0
