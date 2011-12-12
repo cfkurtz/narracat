@@ -143,8 +143,8 @@ def graphPNGBarChart(data, labels, graphName, pngFileName, pngFilePath, horizont
 			i += 1
 		
 		axes = figure.add_subplot(111)
-		roomNeeded = min(longestLabelLength * 0.015, 0.6)
-		plt.subplots_adjust(left=roomNeeded)
+		roomNeeded = max(0.05, min(longestLabelLength * 0.015, 0.6))
+ 		plt.subplots_adjust(left=roomNeeded)
 		plt.subplots_adjust(right=0.98)
 		plt.subplots_adjust(bottom=0.05)
 		
@@ -162,7 +162,7 @@ def graphPNGBarChart(data, labels, graphName, pngFileName, pngFilePath, horizont
 			i += 1
 		
 		axes = figure.add_subplot(111)
-		roomNeeded = min(longestLabelLength * 0.015, 0.6)
+		roomNeeded = max(0.05, min(longestLabelLength * 0.015, 0.6))
 		plt.subplots_adjust(bottom=roomNeeded)
 		
 	if DATA_HAS_SLICES:
@@ -330,62 +330,98 @@ def graphCircleMatrix(numRowsCols, labels, sizes, values, pValues, statLabel, co
 	plt.savefig(pngFilePath + cleanTextForFileName(pngFileName) + ".png", dpi=200)
 	plt.close(figure)
 
-def graphContingencyCircleMatrix(xLabels, yLabels, data, graphName, note, pngFileName, pngFilePath, slice=ALL_DATA_SLICE):
-	xValues = range(1, len(xLabels) + 1)
+def graphChiSquaredContingencyCircleMatrix(xLabels, yLabels, data, graphName, note, pngFileName, pngFilePath, slice=ALL_DATA_SLICE):
+	chiSquaredValue, chiSquaredPValue, degreesOfFreedom, expectedFrequencies = chiSquaredExpectedContingencyTable(data)
+	if not chiSquaredPValue:
+		return
+	if chiSquaredPValue > SIGNIFICANCE_VALUE_REPORTING_THRESHOLD:
+		return
 	
-	# the Y values go from 0 at bottom, so want to flip them, and labels to match
-	yValues = range(1, len(yLabels) + 1)
-	flippedYValues = []
-	flippedYValues.extend(yValues)
-	flippedYValues.reverse()
-	flippedYLabels = []
-	flippedYLabels.extend(yLabels)
-	flippedYLabels.reverse()
-	
-	# this is for sizing the figure so you can see all the labels, but no bigger
-	longestXLabel = 0
-	for label in xLabels:
-		if len(label) > longestXLabel:
-			longestXLabel = len(label)
-	longestYLabel = 0
-	for label in yLabels:
-		if len(label) > longestYLabel:
-			longestYLabel = len(label)
-			
-	maxValue = 0
-	for k in range(len(data)):
-		for l in range(len(data[k])):
-			if abs(data[k][l]) > maxValue:
-				maxValue = abs(data[k][l])
+	print '  printing graph: %s' % graphName
+
+	xValues, flippedYValues, longestXLabel, longestYLabel, flippedYLabels = setUpContingencyLabelsAndTableValues(xLabels, yLabels)
+	observedSizes, maxValue = contingencySizesForData(data, multiplier=0.7)
+	expectedSizes, maxValue = contingencySizesForData(expectedFrequencies, multiplier=0.7, startWithMaxValue=maxValue)
 				
-	sizes = []
+	plt.clf()
+	figure = plt.figure(figsize=(4 + longestXLabel*0.05 + len(xLabels)*0.14, 2 + longestYLabel*0.18 + len(yLabels)*0.14))
+	axes = figure.add_subplot(111)
+	# why is this necessary? no idea. for gender (2 slices) it comes out different
+	if len(xValues) == 2:
+		axes.set_xlim(0, len(xValues) + 2)
+	else:
+		axes.set_xlim(0, len(xValues) + 1)
+	axes.set_ylim(0, len(flippedYValues) + 2)
+	axes.xaxis.grid(True, linestyle='-', which='major', color='#BEBEBE')
+	axes.yaxis.grid(True, linestyle='-', which='major', color='#BEBEBE')
+	axes.set_axisbelow(True)
+	
+	# generate circles
+	for i in range(len(xValues)):
+		for j in range(len(flippedYValues)):
+			observedSize = observedSizes[i][j]
+			expectedSize = expectedSizes[i][j]
+			if observedSize > 0:
+				expectedCircle = Circle((xValues[i], flippedYValues[j]), expectedSize, edgecolor="#B8B8B8", facecolor='none', fill=False, linewidth=1)
+				axes.add_patch(expectedCircle)
+				observedCircle = Circle((xValues[i], flippedYValues[j]), observedSize, edgecolor="#FF0000", facecolor='none', fill=False, linewidth=1)
+				axes.add_patch(observedCircle)
+				plt.text(xValues[i], flippedYValues[j], '%d/%d' % (data[i][j], expectedFrequencies[i][j]), horizontalalignment='center', verticalalignment='center', fontsize=8)
+		
+	# want the x axis ticks (names) on the top, not the bottom
+	axes.xaxis.set_ticks_position('top')
+	plt.xticks(xValues, xLabels)
+	# for some reason if the tick labels are at the top the normal command doesn't work
+	# and you need to set the size and rotation on each separately
+	for aLabel in axes.xaxis.get_ticklabels():
+		aLabel.set_rotation(90)
+		aLabel.set_size(8)
+	plt.yticks(flippedYValues, yLabels, rotation=0, fontsize=8)
+	
+	# this gives a bit more room at the top and side to accommodate the labels
+	roomNeededTop = 1.0 - max(0.2, min(longestXLabel * 0.018, 0.6))
+	plt.subplots_adjust(top=roomNeededTop)
+	roomNeededLeft = max(0.2, min(longestYLabel * 0.015, 0.6))
+	plt.subplots_adjust(left=roomNeededLeft)
+	plt.subplots_adjust(right=0.98)
+	plt.subplots_adjust(bottom=0.1) # was 0.05; added 0.05 for second row of text
+	
+	plt.xlabel(note, fontsize=8)
+	
+	if DATA_HAS_SLICES:
+		graphNameToShow = graphName + " (%s)" % slice
+	else:
+		graphNameToShow = graphName
+	plt.text(0.95, 0.01, "Chi squared = %.3f, p = %.3f (red observed, grey expected)" % (chiSquaredValue, chiSquaredPValue), horizontalalignment='right', transform=figure.transFigure, fontsize=8)
+	plt.text(0.95, 0.05, graphNameToShow, horizontalalignment='right', transform=figure.transFigure, fontsize=8)
+	
+	plt.savefig(pngFilePath + cleanTextForFileName(pngFileName) + ".png", dpi=200)
+	plt.close(figure)
+	
+def graphContingencyCircleMatrix(xLabels, yLabels, data, graphName, note, pngFileName, pngFilePath, slice=ALL_DATA_SLICE):
+	xValues, flippedYValues, longestXLabel, longestYLabel, flippedYLabels = setUpContingencyLabelsAndTableValues(xLabels, yLabels)
+	sizes, maxValue = contingencySizesForData(data)
 	percentages = []
 	for k in range(len(data)):
-		sizes.append([])
 		percentages.append([])
 		totalForThisColumn = 0
 		for l in range(len(data[k])):
 			if l > 0:
 				totalForThisColumn += abs(data[k][l])
 		for l in range(len(data[k])):
-			if maxValue != 0:
-				size = 0.8 * abs(data[k][l]) / maxValue
-			else:
-				size = 0
-			sizes[k].append(size)
 			if totalForThisColumn > 0:
 				percentage = int(100.0 * abs(data[k][l]) / totalForThisColumn)
 				percentages[k].append(percentage)
 			else:
 				percentages[k].append(0)
-	
+				
 	atLeastOnePointInTheGraphIsFarFromAverage = False
 	totalDeviation = 0
 	numDeviations = 0
 	for i in range(len(xValues)):
 		if i == 0 or i == len(xValues)-1:
 			continue
-		for j in range(len(yValues)):
+		for j in range(len(flippedYValues)):
 			if j == 0:
 				continue
 		 	percentage = percentages[i][j]
@@ -418,7 +454,7 @@ def graphContingencyCircleMatrix(xLabels, yLabels, data, graphName, note, pngFil
 			axes.set_xlim(0, len(xValues) + 2)
 		else:
 			axes.set_xlim(0, len(xValues) + 1)
-		axes.set_ylim(0, len(yValues) + 2)
+		axes.set_ylim(0, len(flippedYValues) + 2)
 	
 		axes.xaxis.grid(True, linestyle='-', which='major', color='#BEBEBE')
 		axes.yaxis.grid(True, linestyle='-', which='major', color='#BEBEBE')
@@ -426,7 +462,7 @@ def graphContingencyCircleMatrix(xLabels, yLabels, data, graphName, note, pngFil
 		
 		# generate circles
 		for i in range(len(xValues)):
-			for j in range(len(yValues)):
+			for j in range(len(flippedYValues)):
 				size = sizes[i][j] 
 				dataPoint = data[i][j]
 				percentage = percentages[i][j]
@@ -434,11 +470,11 @@ def graphContingencyCircleMatrix(xLabels, yLabels, data, graphName, note, pngFil
 					percentageAllThisRow = percentages[0][j]
 					totalAllThisRow = data[0][j]
 					totalAllThisColumn = data[i][0]
-
+					
 					if i == 0 or j == 0 or i == len(xValues)-1:
 						circleColor = "#EE9A00"
 						textColor = "#000000"
-					elif valueDeviatesEnoughToShow(percentage, percentageAllThisRow, totalAllThisRow, totalAllThisColumn):
+					elif INCLUDE_PERCENTAGES_IN_CONTINGENCY_DIAGRAMS and valueDeviatesEnoughToShow(percentage, percentageAllThisRow, totalAllThisRow, totalAllThisColumn):
 						circleColor = "#FF0000"
 						textColor = "#000000"
 						#print '     ', graphName, i, j, percentage, "% compared to", percentageAllThisRow, "% (", totalAllThisRow, ")"
@@ -448,10 +484,9 @@ def graphContingencyCircleMatrix(xLabels, yLabels, data, graphName, note, pngFil
 					
 					circle = Circle((xValues[i], flippedYValues[j]), size, color=circleColor, fill=True, linewidth=1)
 					axes.add_patch(circle)
-					
-					if FOR_TTEST_DRAW_SIMPLE_COUNTS:
-						if i != j:
-							plt.text(xValues[i], flippedYValues[j], '%s' % dataPoint, horizontalalignment='center', verticalalignment='center', fontsize=8)
+				
+					if not INCLUDE_PERCENTAGES_IN_CONTINGENCY_DIAGRAMS:
+						plt.text(xValues[i], flippedYValues[j], '%s' % dataPoint, horizontalalignment='center', verticalalignment='center', fontsize=8)
 					else:
 						if j == 0:
 							plt.text(xValues[i], flippedYValues[j], '%s' % dataPoint, horizontalalignment='center', verticalalignment='center', fontsize=8)
@@ -471,9 +506,9 @@ def graphContingencyCircleMatrix(xLabels, yLabels, data, graphName, note, pngFil
 		plt.yticks(flippedYValues, yLabels, rotation=0, fontsize=8)
 		
 		# this gives a bit more room at the top and side to accommodate the labels
-		roomNeededTop = 1.0 - min(longestXLabel * 0.015, 0.6)
+		roomNeededTop = 1.0 - max(0.2,min(longestXLabel * 0.015, 0.6))
 		plt.subplots_adjust(top=roomNeededTop)
-		roomNeededLeft = min(longestYLabel * 0.015, 0.6)
+		roomNeededLeft = max(0.2,min(longestYLabel * 0.015, 0.6))
 		plt.subplots_adjust(left=roomNeededLeft)
 		plt.subplots_adjust(right=0.98)
 		plt.subplots_adjust(bottom=0.05)
@@ -489,6 +524,48 @@ def graphContingencyCircleMatrix(xLabels, yLabels, data, graphName, note, pngFil
 		plt.savefig(pngFilePath + cleanTextForFileName(pngFileName) + ".png", dpi=200)
 		plt.close(figure)
 		
+def setUpContingencyLabelsAndTableValues(xLabels, yLabels):
+	xValues = range(1, len(xLabels) + 1)
+	# the Y values go from 0 at bottom, so want to flip them, and labels to match
+	yValues = range(1, len(yLabels) + 1)
+	flippedYValues = []
+	flippedYValues.extend(yValues)
+	flippedYValues.reverse()
+	flippedYLabels = []
+	flippedYLabels.extend(yLabels)
+	flippedYLabels.reverse()
+	# this is for sizing the figure so you can see all the labels, but no bigger
+	longestXLabel = 0
+	for label in xLabels:
+		if len(label) > longestXLabel:
+			longestXLabel = len(label)
+	longestYLabel = 0
+	for label in yLabels:
+		if len(label) > longestYLabel:
+			longestYLabel = len(label)
+	return xValues, flippedYValues, longestXLabel, longestYLabel, flippedYLabels
+
+def contingencySizesForData(data, multiplier=1.0, startWithMaxValue=0):
+	maxValue = startWithMaxValue
+	for k in range(len(data)):
+		for l in range(len(data[k])):
+			if abs(data[k][l]) > maxValue:
+				maxValue = abs(data[k][l])
+	sizes = []
+	for k in range(len(data)):
+		sizes.append([])
+		totalForThisColumn = 0
+		for l in range(len(data[k])):
+			if l > 0:
+				totalForThisColumn += abs(data[k][l])
+		for l in range(len(data[k])):
+			if maxValue != 0:
+				size = multiplier * 0.8 * abs(data[k][l]) / maxValue
+			else:
+				size = 0
+			sizes[k].append(size)
+	return sizes, maxValue
+
 def valueDeviatesEnoughToShow(percentage, percentageAllThisRow, totalAllThisRow, totalAllThisColumn):
 	absoluteTotalIsHighEnough = totalAllThisRow >= LOWER_LIMIT_STORY_NUMBER_FOR_COMPARISONS and totalAllThisColumn >= LOWER_LIMIT_STORY_NUMBER_FOR_COMPARISONS
 	valueIsFarEnoughFromAverage = abs(percentage - percentageAllThisRow) >= CONTINGENCY_PERCENTAGE_THRESHOLD

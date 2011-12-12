@@ -40,6 +40,7 @@ class NarracatLauncher(Frame):
 			["Data output", self.dataOutput],
 			["Choices", "LABEL"],
 			["Choice graphs", self.choiceGraphs],
+			["Chi squared tests", self.chiSquaredContingencies],
 			["Answer contingencies", self.answerContingencies],
 			["Scales", "LABEL"],
 			["Scale histograms", self.scaleHistograms],
@@ -146,6 +147,7 @@ class NarracatLauncher(Frame):
 		self.doOperationsButton["command"] = self.doOperations
 		self.doOperationsButton.pack(side=TOP)
 
+		Label(operationsFrame, text="   ").pack(side=TOP, anchor=W) # spacer so quit button stands out
 		self.quitButton = Button(operationsFrame)
 		self.quitButton["text"] = "  Quit   "
 		self.quitButton["command"] = self.quit
@@ -176,6 +178,7 @@ class NarracatLauncher(Frame):
 		self.browser.questions = self.questions
 		self.browser.respondents = self.respondents
 		self.browser.stories = self.stories
+		createPathIfNonexistent(OUTPUT_PATH)
 		
 		self.currentFileName.delete('0.0', END)
 		self.currentFileName.insert(END, "  " + DATA_PATH + PICKLE_FILE_NAME)
@@ -199,7 +202,7 @@ class NarracatLauncher(Frame):
 		# custom
 		#printResultForSpecificQuestionID(self.questions, self.stories, "Come from")
 		#printNamesOfStoriesWithNoArchetypeData(self.stories, self.questions)
-		print '\n dataIntegrityCheck DONE'
+		print '\n data integrity check DONE'
 				
 	def dataOutput(self):
 		if not self.questions and self.respondents and self.stories:
@@ -208,7 +211,7 @@ class NarracatLauncher(Frame):
 		writeStoriesToTextFile(self.questions, self.stories)
 		writeOtherResponsesToQuestions(self.questions, self.stories)
 		writeInfoAboutPeopleAndNumberOfStoriesTold(self.questions, self.stories, self.respondents)
-		print '\n dataOutput DONE'
+		print '\n data output DONE'
 	
 	# CHOICES
 	
@@ -217,7 +220,7 @@ class NarracatLauncher(Frame):
 			return
 		for slice in SLICES:
 			graphBarChartsOfAnswerCountsPerQuestion(self.questions, self.stories, slice=slice)
-		print '\n choiceGraphs DONE'
+		print '\n choice graphs DONE'
 	
 	def answerContingencies(self):
 		if not self.questions and self.respondents and self.stories:
@@ -225,7 +228,14 @@ class NarracatLauncher(Frame):
 		for slice in SLICES:
 			graphBarChartOfAnswerCombinationCounts(self.questions, self.stories) 
 			graphAnswerContingencies(self.questions, self.stories, slice=slice)
-		print '\n answerContingencies DONE'
+		print '\n answer contingencies DONE'
+		
+	def chiSquaredContingencies(self):
+		if not self.questions and self.respondents and self.stories:
+			return
+		for slice in SLICES:
+			graphAnswerContingencies(self.questions, self.stories, slice=slice, chiSquared=True)
+		print '\n chi squared tests DONE'
 	
 	# SCALES
 	
@@ -234,7 +244,7 @@ class NarracatLauncher(Frame):
 			return
 		for slice in SLICES:
 			graphScaleHistograms(self.questions, self.stories, inOwnDirectory=False, slice=slice)
-		print '\n scaleHistograms DONE'
+		print '\n scale histograms DONE'
 	
 	# SCALES WITH CHOICES
 	
@@ -243,21 +253,21 @@ class NarracatLauncher(Frame):
 			return
 		for slice in SLICES:
 			doTTestsToCompareScaleValuesWithQuestionAnswers(self.questions, self.stories, slice=slice, byQuestion=False)
-		print '\n tTests DONE'
+		print '\n t-tests DONE'
 	
 	def skewDifferences(self):
 		if not self.questions and self.respondents and self.stories:
 			return
 		for slice in SLICES:
 			compareSkewInScaleValuesWithQuestionAnswers(self.questions, self.stories, slice=slice, byQuestion=False)
-		print '\n skewDifferences DONE'
+		print '\n skew differences DONE'
 	
 	def scaleHistogramsByChoice(self):
 		if not self.questions and self.respondents and self.stories:
 			return
 		for slice in SLICES:
 			graphScaleHistogramsPerQuestionAnswer(self.questions, self.stories, slice=slice)
-		print '\n scaleHistogramsByChoice DONE'
+		print '\n scale histograms by choice DONE'
 	
 	# SCALES WITH SCALES
 	
@@ -266,14 +276,14 @@ class NarracatLauncher(Frame):
 			return
 		for slice in SLICES:
 			graphScaleCorrelationMatrix(self.questions, self.stories, slice=slice)
-		print '\n correlationMatrix DONE'
+		print '\n correlation matrix DONE'
 	
 	def scatterGraphs(self):
 		if not self.questions and self.respondents and self.stories:
 			return
 		for slice in SLICES:
 			graphScaleScattergrams(self.questions, self.stories, slice=slice, separateDirectories=False)
-		print '\n scatterGraphs DONE'
+		print '\n scatter graphs DONE'
 	
 	# SCALES WITH SCALES AND CHOICES
 	
@@ -283,14 +293,14 @@ class NarracatLauncher(Frame):
 		for slice in SLICES:
 			graphScaleCorrelationMatrixForQuestionAnswers(self.questions, self.stories, slice=slice)
 			writeCorrelationsToCSVForQuestionAnswers(self.questions, self.stories, slice=slice)
-		print '\n correlationMatricesByChoice DONE'
+		print '\n correlation matrices by choice DONE'
 	
 	def scatterGraphsByChoice(self):
 		if not self.questions and self.respondents and self.stories:
 			return
 		for slice in SLICES:
 			graphScaleScattergramsForQuestionAnswers(self.questions, self.stories, slice=slice)
-		print '\n scatterGraphsByChoice DONE'
+		print '\n scatter graphs by choice DONE'
 	
 	# STABILITY
 	
@@ -299,14 +309,14 @@ class NarracatLauncher(Frame):
 			return
 		for slice in SLICES:
 			graphScaleContourGraphsAgainstStability(self.questions, self.stories, STABILITY_QUESTION_NAME, separateDirectories=False, slice=slice)
-		print '\n stabilityLandscapes DONE'
+		print '\n stability landscapes DONE'
 	
 	def stabilityLandscapesByChoice(self):
 		if not self.questions and self.respondents and self.stories:
 			return
 		for slice in SLICES:
 			graphScaleContourGraphsAgainstStabilityForQuestionAnswers(self.questions, self.stories, STABILITY_QUESTION_NAME, slice=slice)
-		print '\n stabilityLandscapesByChoice DONE'
+		print '\n stability landscapes by choice DONE'
 
 	# SLICES
 	
@@ -336,7 +346,7 @@ class NarracatLauncher(Frame):
 		
 		# scales with questions
 		graphTTestValuesForSlices(self.questions, self.stories, columns)
-		print '\n sliceGraphs DONE'
+		print '\n slice graphs DONE'
 	
 	# TERNARY SETS
 	
@@ -348,7 +358,7 @@ class NarracatLauncher(Frame):
 			return
 		calculateThirdValueStrengthForTernaryAnswers(self.questions, self.stories)
 		graphTernaryPlotValuesPerRespondent(self.questions, self.stories, self.respondents)
-		print '\n dataIntegrityCheckForTernarySets DONE'
+		print '\n data integrity check for ternary sets DONE'
 	
 	def ternarySetGraphs(self):
 		if not self.questions and self.respondents and self.stories:
@@ -357,7 +367,7 @@ class NarracatLauncher(Frame):
 			print "\n no ternary sets set up in data"
 			return
 		graphTernaryPlots(self.questions, self.stories, separateDirectories=False)
-		print '\n ternarySetGraphs DONE'
+		print '\n ternary set graphs DONE'
 		
 	def ternarySetGraphsByChoice(self):
 		if not self.questions and self.respondents and self.stories:
@@ -367,7 +377,7 @@ class NarracatLauncher(Frame):
 			return
 		graphTernaryPlotsForQuestionAnswers(self.questions, self.stories)
 		compareTernaryMeansForScaleValuesWithQuestionAnswers(self.questions, self.stories, byQuestion=False)
-		print '\n ternarySetGraphsByChoice DONE'
+		print '\n ternary set graphs by choice DONE'
 	
 	def ternarySetByTernarySetGraphs(self):
 		if not self.questions and self.respondents and self.stories:
@@ -376,7 +386,7 @@ class NarracatLauncher(Frame):
 			print "\n no ternary sets set up in data"
 			return
 		graphDifferencesBetweenTernaryPlots(self.questions, self.stories, separateDirectories=False)
-		print '\n ternarySetByTernarySetGraphs DONE'
+		print '\n ternary set by ternary set graphs DONE'
 	
 	def ternarySetByTernarySetGraphsByChoice(self):
 		if not self.questions and self.respondents and self.stories:
@@ -385,7 +395,7 @@ class NarracatLauncher(Frame):
 			print "\n no ternary sets set up in data"
 			return
 		graphTernaryPlotDifferencesForQuestionAnswers(self.questions, self.stories)
-		print '\n ternarySetByTernarySetGraphsByChoice DONE'
+		print '\n ternary set by ternary set graphs by choice DONE'
 	
 	def ternarySetByScaleGraphs(self):
 		if not self.questions and self.respondents and self.stories:
@@ -394,7 +404,7 @@ class NarracatLauncher(Frame):
 			print "\n no ternary sets set up in data"
 			return
 		graphTernaryPlotsAgainstScales(self.questions, self.stories, separateDirectories=False)
-		print '\n ternarySetByScaleGraphs DONE'
+		print '\n ternary set by scale graphs DONE'
 	
 	def ternarySetByScalesGraphsByChoice(self):
 		if not self.questions and self.respondents and self.stories:
@@ -403,7 +413,7 @@ class NarracatLauncher(Frame):
 			print "\n no ternary sets set up in data"
 			return
 		graphTernaryPlotsAgainstScalesForQuestionAnswers(self.questions, self.stories)
-		print '\n ternarySetByScalesGraphsByChoice DONE'
+		print '\n ternary set by scales graphs by choice DONE'
 	
 	# CLUSTERS
 	
@@ -453,7 +463,7 @@ class NarracatLauncher(Frame):
 				graphClusterMeansAndHistograms(self.questions, self.respondents, method=method, slice=slice)
 				graphClusterAnswerCounts(self.questions, self.respondents, method=method, slice=slice)
 				graphClusterScatterGraphs(self.questions, self.respondents, method=method, slice=slice)
-		print '\n clusterAnalysis DONE'
+		print '\n cluster analysis DONE'
 		
 	def checkIfWeCanDoClusterAnalysis(self, slice):
 		# the cluster analysis methods cannot deal with situations where there are not the same number of values per respondent

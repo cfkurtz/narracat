@@ -306,10 +306,13 @@ def graphBarChartOfAnswerCombinationCounts(questions, stories, slice=ALL_DATA_SL
 				overallPathWithSlice, figureHeight=10, slice=slice)
 	print '  done writing answer combination graphs. (%s)' % slice
 	
-# answer combination frequencies (contingencies)
-def graphAnswerContingencies(questions, stories, slice=ALL_DATA_SLICE):
+# chi squared test for answer combination frequencies (contingencies)
+def graphAnswerContingencies(questions, stories, chiSquared=False, slice=ALL_DATA_SLICE):
 	print 'writing answer contingencies ... (%s)' % slice
-	contingenciesPath = createPathIfNonexistent(OUTPUT_PATH + "answer contingencies" + os.sep)
+	if chiSquared:
+		contingenciesPath = createPathIfNonexistent(OUTPUT_PATH + "chi-squared answer contingencies" + os.sep)
+	else:
+		contingenciesPath = createPathIfNonexistent(OUTPUT_PATH + "answer contingencies" + os.sep)
 	if DATA_HAS_SLICES:
 		contingenciesPathWithSlice = createPathIfNonexistent(contingenciesPath + slice + os.sep)
 	else:
@@ -327,17 +330,21 @@ def graphAnswerContingencies(questions, stories, slice=ALL_DATA_SLICE):
 				colors = []
 				maxValue = 0
 				firstAnswersToCheck = []
-				firstAnswersToCheck.append(ALL_ANSWERS)
+				if not chiSquared:
+					firstAnswersToCheck.append(ALL_ANSWERS)
 				firstAnswersToCheck.extend(firstQuestion.shortResponseNames)
-				firstAnswersToCheck.append(NO_ANSWER)
+				if not chiSquared:
+					firstAnswersToCheck.append(NO_ANSWER)
 				firstAnswersToCheck = removeDuplicates(firstAnswersToCheck) # because of extra answers in survey
 				for firstAnswer in firstAnswersToCheck:
 					data.append([])
 					colors.append([])
 					secondAnswersToCheck = []
-					secondAnswersToCheck.append(ALL_ANSWERS)
+					if not chiSquared:
+						secondAnswersToCheck.append(ALL_ANSWERS)
 					secondAnswersToCheck.extend(secondQuestion.shortResponseNames)
-					secondAnswersToCheck.append(NO_ANSWER)
+					if not chiSquared:
+						secondAnswersToCheck.append(NO_ANSWER)
 					secondAnswersToCheck = removeDuplicates(secondAnswersToCheck) # because of extra answers in survey
 					for secondAnswer in secondAnswersToCheck:
 						numStoriesForThisCombination = 0
@@ -355,11 +362,15 @@ def graphAnswerContingencies(questions, stories, slice=ALL_DATA_SLICE):
 					note = ""#"Size of circle is number of stories\nwith both answers in common."
 					xLabels = firstAnswersToCheck
 					yLabels = secondAnswersToCheck
-					graphContingencyCircleMatrix(xLabels, yLabels, data, 
+					if chiSquared:
+						graphChiSquaredContingencyCircleMatrix(xLabels, yLabels, data, 
+												graphName, note, graphName, contingenciesPathWithSlice, slice=slice)
+					else:
+						graphContingencyCircleMatrix(xLabels, yLabels, data, 
 												graphName, note, graphName, contingenciesPathWithSlice, slice=slice)
 					numGraphsWritten += 1
 					if numGraphsWritten % 10 == 0:
-						print '  ... %s graphs written' % numGraphsWritten
+						print '  ... %s combinations considered' % numGraphsWritten
 	print '  done writing answer contingencies. (%s)' % slice
 	
 # -----------------------------------------------------------------------------------------------------------------

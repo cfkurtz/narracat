@@ -72,3 +72,18 @@ def ttestForTwoChoiceQuestions(xValues, yValues):
 	
 	return parametric, t, tp
 
+def chiSquaredExpectedContingencyTable(data):
+	# http://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.chi2_contingency.html#scipy.stats.chi2_contingency
+	# chi squared test cannot be used if any cell of the table has a count lower than five in it
+	atLeastOneCountIsLessThanFive = False
+	for k in range(len(data)):
+		for l in range(len(data[k])):
+			if abs(data[k][l]) < 5:
+				atLeastOneCountIsLessThanFive = True
+				break
+	if not atLeastOneCountIsLessThanFive:
+		return None, None, None, None
+	else:
+		npData = np.array(data)
+		# chi2_contingency returns chiSquaredValue, chiSquaredPValue, degreesOfFreedom, expectedFrequencies
+		return stats.chi2_contingency(npData)

@@ -86,7 +86,7 @@ class ColumnDefinition():
 			else:
 				self.storyNumber = -1
 
-			#print self.id, self.refersTo, self.type, self.storyNumber
+			#print 'creating ColumnDefinition for ', self.id, self.refersTo, self.type, self.storyNumber
 			
 	def listFromStringRemovingBlankLines(self, aString):
 		result = []
@@ -335,7 +335,9 @@ class Respondent():
 			elif colDef.refersTo == "participant":
 				
 				# if this is the ID field, record it
+				#print colDef.id, RESPONDENT_ID_FIELD
 				if colDef.id.find(RESPONDENT_ID_FIELD) >= 0:
+					#print 'found RESPONDENT_ID_FIELD'
 					for story in self.stories:
 						story.respondentPassword = cell
 						self.id = cell 
@@ -1028,7 +1030,7 @@ def readDataFromCSVFiles(dataFileName, labelsFileName):
 	
 	try:
 		labels = csv.reader(labelsFile)
-
+		
 		# first, read column definitions that say what each column means
 		rowIndex = 0
 		for row in labels:
@@ -1039,9 +1041,10 @@ def readDataFromCSVFiles(dataFileName, labelsFileName):
 				continue
 			if len(row) > 2:
 				colDef = ColumnDefinition(row, rowIndex)
-				#print colDef.id, colDef.codes, colDef.shortResponseNames
+				#print 'using ColumnDefinition to read data ', colDef.id, colDef.codes, colDef.shortResponseNames
 				columnDefinitions.append(colDef)
 			rowIndex += 1
+			
 				
 		# next, build question list from column definitions
 		for colDef in columnDefinitions:
@@ -1237,7 +1240,7 @@ def writeSimplifiedDataToCSV(questions, stories):
 				if question.type in CSV_WRITE_AS_SINGLE_COLUMNS:
 					answers = story.gatherAnswersForQuestionID(question.id)
 					if answers:
-						if question.type == TYPE_MULTIPLE_CHOICE_DELIMITED:
+						if question.type in [TYPE_MULTI_CHOICE, TYPE_MULTIPLE_CHOICE_DELIMITED]:
 							answers = removeDuplicates(answers)
 							answersCombined = CSV_WRITE_MULTI_VALUE_IN_ONE_COL_DELIMITER.join(answers)
 							cols.append('"%s"' % answersCombined)
