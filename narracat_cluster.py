@@ -27,10 +27,10 @@ from scipy.spatial.distance import pdist
 # cluster stats
 # -----------------------------------------------------------------------------------------------------------------
 
-def calculateClustersFromScaleValues(scaleValuesByRespondent, method="k-means", k=4):
+def calculateClustersFromScaleValues(scaleValuesByParticipant, method="k-means", k=4):
 	# http://en.wikipedia.org/wiki/Cluster_analysis
 	
-	npArrayOfObservations = np.array(scaleValuesByRespondent)
+	npArrayOfObservations = np.array(scaleValuesByParticipant)
 	
 	if method == "k-means":
 		# http://docs.scipy.org/doc/scipy/reference/cluster.vq.html
@@ -73,18 +73,18 @@ def calculateClustersFromScaleValues(scaleValuesByRespondent, method="k-means", 
 # necessary because clusters are randomly assigned, thus different every time clustering is calculated
 # -----------------------------------------------------------------------------------------------------------------
 
-def calculateClusters(questions, respondents, method, slice, k=4):
-	scaleValuesByRespondent = gatherScaleValuesByRespondent(questions, respondents, slice=slice)
-	print "len(scaleValuesByRespondent)", len(scaleValuesByRespondent)
-	codes, linkages, distortions = calculateClustersFromScaleValues(scaleValuesByRespondent, method, k=k) 
+def calculateClusters(questions, participants, method, slice, k=4):
+	scaleValuesByParticipant = gatherScaleValuesByParticipant(questions, participants, slice=slice)
+	print "len(scaleValuesByParticipant)", len(scaleValuesByParticipant)
+	codes, linkages, distortions = calculateClustersFromScaleValues(scaleValuesByParticipant, method, k=k) 
 	maxCode = 0
 	for code in codes:
 		if code > maxCode:
 			maxCode = code
 	return codes, linkages, distortions, maxCode
 
-def calculateClusterMembershipsAndWriteToFile(questions, scalesToConsider, respondents, method="k-means", slice=ALL_DATA_SLICE, k=4):
-	codes, linkages, distortions, maxCode = calculateClusters(scalesToConsider, respondents, method, slice, k)
+def calculateClusterMembershipsAndWriteToFile(questions, scalesToConsider, participants, method="k-means", slice=ALL_DATA_SLICE, k=4):
+	codes, linkages, distortions, maxCode = calculateClusters(scalesToConsider, participants, method, slice, k)
 	
 	membershipsFileName = membershipsFileNameForType(method, k, slice)
 		
@@ -98,20 +98,20 @@ def calculateClusterMembershipsAndWriteToFile(questions, scalesToConsider, respo
 	else:
 		membershipsFile = open(membershipsFileName, 'w')
 		try:
-			membershipsFile.write(';Cluster memberships file: respondent id and cluster code on each line\n')
-			print len(respondents), len(codes)
+			membershipsFile.write(';Cluster memberships file: participant id and cluster code on each line\n')
+			print len(participants), len(codes)
 			i = 0
-			for respondent in respondents:
-				membershipsFile.write("%s,%s\n" % (respondent.id, codes[i]))
+			for participant in participants:
+				membershipsFile.write("%s,%s\n" % (participant.id, codes[i]))
 				i += 1
 		finally:
 			membershipsFile.close()
 	return membershipsFileName
 		
-def collectRespondentMembershipsFromStorageInFile(respondents, method="k-means", slice=ALL_DATA_SLICE, k=4):
-	respondentIDs = {}
-	for respondent in respondents:
-		respondentIDs[respondent.id] = respondent
+def collectParticipantMembershipsFromStorageInFile(participants, method="k-means", slice=ALL_DATA_SLICE, k=4):
+	participantIDs = {}
+	for participant in participants:
+		participantIDs[participant.id] = participant
 		
 	memberships = {}
 	overallPath = createPathIfNonexistent(OUTPUT_PATH + "overall" + os.sep)
@@ -127,9 +127,9 @@ def collectRespondentMembershipsFromStorageInFile(respondents, method="k-means",
 		for row in rows:
 			if row[0][0] == ";":
 				continue
-			respondentID = row[0]
-			if respondentIDs.has_key(respondentID):
-				memberships[respondentIDs[respondentID]] = int(row[1])
+			participantID = row[0]
+			if participantIDs.has_key(participantID):
+				memberships[participantIDs[participantID]] = int(row[1])
 	finally:
 		membershipsFile.close()
 	
@@ -157,10 +157,10 @@ def clustersSlicePath(method, slice, k=4):
 # graphing results of clustering
 # -----------------------------------------------------------------------------------------------------------------
 
-def graphClusterMeansAndHistograms(questions, respondents, method="k-means", slice=ALL_DATA_SLICE, k=4):
+def graphClusterMeansAndHistograms(questions, participants, method="k-means", slice=ALL_DATA_SLICE, k=4):
 	print 'writing clusters %s %s ...'  % (method, slice)
 	
-	memberships = collectRespondentMembershipsFromStorageInFile(respondents, method, slice, k)
+	memberships = collectParticipantMembershipsFromStorageInFile(participants, method, slice, k)
 	slicePath = clustersSlicePath(method, slice, k)
 	
 	overallPath = createPathIfNonexistent(OUTPUT_PATH + "overall" + os.sep)
@@ -171,9 +171,9 @@ def graphClusterMeansAndHistograms(questions, respondents, method="k-means", sli
 	scaleQuestions = gatherScaleQuestions(questions)
 	scaleValuesByCluster = {}
 	i = 0
-	for respondent in respondents:
-		if memberships.has_key(respondent):
-			clusterIBelongIn = memberships[respondent]
+	for participant in participants:
+		if memberships.has_key(participant):
+			clusterIBelongIn = memberships[participant]
 		else:
 			continue
 		if not scaleValuesByCluster.has_key(clusterIBelongIn):
@@ -181,7 +181,7 @@ def graphClusterMeansAndHistograms(questions, respondents, method="k-means", sli
 		for scaleQuestion in scaleQuestions:
 				if not scaleValuesByCluster[clusterIBelongIn].has_key(scaleQuestion.veryShortName()):
 					scaleValuesByCluster[clusterIBelongIn][scaleQuestion.veryShortName()] = []
-				for story in respondent.stories:
+				for story in participant.stories:
 					if story.matchesSlice(slice):
 						values = story.gatherAnswersForQuestionID(scaleQuestion.id)
 						if values:
@@ -220,10 +220,10 @@ def graphClusterMeansAndHistograms(questions, respondents, method="k-means", sli
 			print '	... %s graphs written' % graphsWritten
 	print '  done writing means and std devs and histograms. '
 
-def graphClusterAnswerCounts(questions, respondents, method="K-means", slice=ALL_DATA_SLICE, k=4):
+def graphClusterAnswerCounts(questions, participants, method="K-means", slice=ALL_DATA_SLICE, k=4):
 	print 'writing %s %s clusters ...' % (method, slice)
 	
-	memberships = collectRespondentMembershipsFromStorageInFile(respondents, method, slice, k)
+	memberships = collectParticipantMembershipsFromStorageInFile(participants, method, slice, k)
 	slicePath = clustersSlicePath(method, slice, k)
 	
 	scaleQuestions = gatherScaleQuestions(questions)
@@ -232,9 +232,9 @@ def graphClusterAnswerCounts(questions, respondents, method="K-means", slice=ALL
 	print '  ... writing choice question counts for clusters ...'
 	choiceCountsByCluster = {}
 	i = 0
-	for respondent in respondents:
-		if memberships.has_key(respondent):
-			clusterIBelongIn = memberships[respondent]
+	for participant in participants:
+		if memberships.has_key(participant):
+			clusterIBelongIn = memberships[participant]
 		else:
 			continue
 		if not choiceCountsByCluster.has_key(clusterIBelongIn):
@@ -247,7 +247,7 @@ def graphClusterAnswerCounts(questions, respondents, method="K-means", slice=ALL
 				for answer in choiceQuestion.shortResponseNames:
 					if not choiceCountsByCluster[clusterIBelongIn][choiceQuestion.shortName].has_key(answer):
 						questionDict[answer] = 0
-					for story in respondent.stories:
+					for story in participant.stories:
 						if story.matchesSlice(slice):
 							if story.hasAnswerForQuestionID(answer, choiceQuestion.id):
 								questionDict[answer] += 1
@@ -273,10 +273,10 @@ def graphClusterAnswerCounts(questions, respondents, method="K-means", slice=ALL
 
 	print '  done writing %s %s clusters.'	% (method, slice)
 
-def graphClusterScatterGraphs(questions, respondents, method="K-means", slice=ALL_DATA_SLICE, k=4):
+def graphClusterScatterGraphs(questions, participants, method="K-means", slice=ALL_DATA_SLICE, k=4):
 	print 'writing %s %s clusters ...' % (method, slice)
 
-	memberships = collectRespondentMembershipsFromStorageInFile(respondents, method, slice, k)
+	memberships = collectParticipantMembershipsFromStorageInFile(participants, method, slice, k)
 	maxCode = 0
 	for code in memberships.values():
 		if code > maxCode:
@@ -295,12 +295,12 @@ def graphClusterScatterGraphs(questions, respondents, method="K-means", slice=AL
 				yValues = []
 				colorNames = []
 				r = 0
-				for respondent in respondents:
-					if memberships.has_key(respondent):
-						clusterIBelongIn = memberships[respondent]
+				for participant in participants:
+					if memberships.has_key(participant):
+						clusterIBelongIn = memberships[participant]
 					else:
 						continue
-					for story in respondent.stories:
+					for story in participant.stories:
 						if story.matchesSlice(slice):
 							xy = story.gatherScaleValuesForListOfIDs([scaleQuestions[i].id, scaleQuestions[j].id])
 							if xy:
@@ -342,10 +342,10 @@ def colorNameForCluster(code, maxCode):
 		raise "no color for code %s" % code
 	return color
 
-def graphClusterContours(questions, respondents, method="K-means", slice=ALL_DATA_SLICE, k=4):
+def graphClusterContours(questions, participants, method="K-means", slice=ALL_DATA_SLICE, k=4):
 	print 'writing %s %s clusters ...' % (method, slice)
 
-	memberships = collectRespondentMembershipsFromStorageInFile(respondents, method, slice, k)
+	memberships = collectParticipantMembershipsFromStorageInFile(participants, method, slice, k)
 	maxCode = 0
 	for code in memberships.values():
 		if code > maxCode:
@@ -365,14 +365,14 @@ def graphClusterContours(questions, respondents, method="K-means", slice=ALL_DAT
 					xValues = []
 					yValues = []
 					zValues = []
-					respondentIndex = 0
-					for respondent in respondents:
-						if memberships.has_key(respondent):
-							respondentCluster = memberships[respondent]
+					participantIndex = 0
+					for participant in participants:
+						if memberships.has_key(participant):
+							participantCluster = memberships[participant]
 						else:
 							continue
-						if respondentCluster == clusterToGraph:
-							for story in respondent.stories:
+						if participantCluster == clusterToGraph:
+							for story in participant.stories:
 								if story.matchesSlice(slice):
 									xy = story.gatherScaleValuesForListOfIDs([scaleQuestions[i].id, scaleQuestions[j].id])
 									z = story.getStabilityValue(questions)
@@ -380,7 +380,7 @@ def graphClusterContours(questions, respondents, method="K-means", slice=ALL_DAT
 										xValues.append(int(xy[0]))
 										yValues.append(int(xy[1]))
 										zValues.append(z)
-						respondentIndex += 1
+						participantIndex += 1
 					if len(xValues):
 						if method == "k-means":
 							numberToWrite = clusterToGraph + 1
@@ -394,27 +394,27 @@ def graphClusterContours(questions, respondents, method="K-means", slice=ALL_DAT
 							print '	... %s graphs written' % graphsWritten
 	print '  done writing %s %s clusters.'	% (method, slice)
 	
-def printCountsOfClusterRespondents(questions, respondents, method="k-means", slice=ALL_DATA_SLICE, k=4):
-	memberships = collectRespondentMembershipsFromStorageInFile(respondents, method, slice, k)
+def printCountsOfClusterParticipants(questions, participants, method="k-means", slice=ALL_DATA_SLICE, k=4):
+	memberships = collectParticipantMembershipsFromStorageInFile(participants, method, slice, k)
 	counts = {}
-	for i in range(len(respondents)):
-		if memberships.has_key(respondents[i]):
-			respondentCluster = memberships[respondents[i]]
+	for i in range(len(participants)):
+		if memberships.has_key(participants[i]):
+			participantCluster = memberships[participants[i]]
 		else:
 			continue
-		if not counts.has_key(respondentCluster):
-			counts[respondentCluster] = 0
-		counts[respondentCluster] += 1
-	print 'respondents per cluster for method %s, %s stories:'	% (method, slice)
+		if not counts.has_key(participantCluster):
+			counts[participantCluster] = 0
+		counts[participantCluster] += 1
+	print 'participants per cluster for method %s, %s stories:'	% (method, slice)
 	for key in counts:
-		print '  cluster %s has %s respondents' % ((key+1), counts[key])
+		print '  cluster %s has %s participants' % ((key+1), counts[key])
 	
 # -----------------------------------------------------------------------------------------------------------------
 # for finding out which variables produce the best clusters
 # not often used
 # -----------------------------------------------------------------------------------------------------------------
 
-def graphSortedDistanceMeasuresForKMeansClusteringPairs(questions, respondents, slice=ALL_DATA_SLICE):
+def graphSortedDistanceMeasuresForKMeansClusteringPairs(questions, participants, slice=ALL_DATA_SLICE):
 	print 'comparing %s cluster distortions ...' % slice
 	scaleQuestions = gatherScaleQuestions(questions)
 	for k in [2,3,4,5,6,7,8]:
@@ -424,8 +424,8 @@ def graphSortedDistanceMeasuresForKMeansClusteringPairs(questions, respondents, 
 			sizes.append([])
 			colors.append([])
 			for j in range(len(scaleQuestions)):
-				scaleValuesByRespondent = gatherScaleValuesByRespondent([scaleQuestions[i], scaleQuestions[j]], respondents, slice=slice)
-				codes, linkages, distortions = calculateClustersFromScaleValues(scaleValuesByRespondent, "k-means", k)
+				scaleValuesByParticipant = gatherScaleValuesByParticipant([scaleQuestions[i], scaleQuestions[j]], participants, slice=slice)
+				codes, linkages, distortions = calculateClustersFromScaleValues(scaleValuesByParticipant, "k-means", k)
 				mean = np.mean(distortions)
 				sizes[i].append((mean - 1.0) / 2.0)
 				colors[i].append("#FF0000")
@@ -440,7 +440,7 @@ def graphSortedDistanceMeasuresForKMeansClusteringPairs(questions, respondents, 
 		graphCircleMatrix(len(scaleQuestions), labels, sizes, colors, graphName, note, graphName, overallPath)
 	print '  done comparing %s cluster distortions.' % slice
 
-def printSortedDistanceMeasuresForKMeansClusteringTernarySets(questions, respondents, slice=ALL_DATA_SLICE):
+def printSortedDistanceMeasuresForKMeansClusteringTernarySets(questions, participants, slice=ALL_DATA_SLICE):
 	print 'comparing %s cluster ternarySet distortions ...' % slice
 	scaleQuestions = gatherScaleQuestions(questions)
 	print '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>'
@@ -451,8 +451,8 @@ def printSortedDistanceMeasuresForKMeansClusteringTernarySets(questions, respond
 			for j in range(len(scaleQuestions)):
 				for m in range(len(scaleQuestions)):
 					if i != j and j != m and i != m:
-						scaleValuesByRespondent = gatherScaleValuesByRespondent([scaleQuestions[i], scaleQuestions[j], scaleQuestions[m]], respondents, slice=slice)
-						codes, linkages, distortions = calculateClustersFromScaleValues(scaleValuesByRespondent, "k-means", k)
+						scaleValuesByParticipant = gatherScaleValuesByParticipant([scaleQuestions[i], scaleQuestions[j], scaleQuestions[m]], participants, slice=slice)
+						codes, linkages, distortions = calculateClustersFromScaleValues(scaleValuesByParticipant, "k-means", k)
 						mean = np.mean(distortions)
 						std = np.std(distortions)
 						min = np.min(distortions)
@@ -464,7 +464,7 @@ def printSortedDistanceMeasuresForKMeansClusteringTernarySets(questions, respond
 			print "k %s %s - %s mean=%.3f std=%.3f min=%.3f max=%.3f" % (k, slice, stat[0], stat[1], stat[2], stat[3], stat[4])
 	print '  done comparing %s cluster ternarySet distortions.' % slice
 
-def printSortedDistanceMeasuresForKMeansClusteringQuads(questions, respondents, slice=ALL_DATA_SLICE):
+def printSortedDistanceMeasuresForKMeansClusteringQuads(questions, participants, slice=ALL_DATA_SLICE):
 	print 'comparing %s cluster quad distortions ...' % slice
 	scaleQuestions = gatherScaleQuestions(questions)
 	print '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>'
@@ -476,8 +476,8 @@ def printSortedDistanceMeasuresForKMeansClusteringQuads(questions, respondents, 
 				for m in range(len(scaleQuestions)):
 					for n in range(len(scaleQuestions)):
 						if i != j and j != m and i != m and i != n and j != n and m != n:
-							scaleValuesByRespondent = gatherScaleValuesByRespondent([scaleQuestions[i], scaleQuestions[j], scaleQuestions[m], scaleQuestions[n]], respondents, slice=slice)
-							codes, linkages, distortions = calculateClustersFromScaleValues(scaleValuesByRespondent, "k-means", k)
+							scaleValuesByParticipant = gatherScaleValuesByParticipant([scaleQuestions[i], scaleQuestions[j], scaleQuestions[m], scaleQuestions[n]], participants, slice=slice)
+							codes, linkages, distortions = calculateClustersFromScaleValues(scaleValuesByParticipant, "k-means", k)
 							mean = np.mean(distortions)
 							std = np.std(distortions)
 							min = np.min(distortions)

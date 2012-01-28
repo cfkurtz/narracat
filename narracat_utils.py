@@ -46,6 +46,20 @@ def stringBetween(startString, endString, wholeString):
 	result = stringUpTo(stringBeyond(wholeString.strip(), startString), endString)
 	return result
 
+def listFromStringRemovingBlankLines(aString):
+	result = []
+	pieces = aString.split("\n")
+	for piece in pieces:
+		if piece:
+			result.append(piece)
+	return result
+
+def textOrDefaultIfBlank(text, aDefault):
+	if len(text) > 0:
+		return text
+	else:
+		return aDefault
+
 def cleanTextForFileName(fileName):
 	result = fileName.replace("" + os.sep, " ").replace(":", " ").replace(".", " ").replace("\n", " ")
 	result = result.replace("  ", " ")
@@ -64,6 +78,12 @@ def listWithoutItem(aList, itemToRemove):
 		if not item == itemToRemove:
 			newList.append(item)
 	return newList
+
+def numNonEmptyElementsInList(aList):
+	result = 0
+	for item in aList:
+		result += item != ''
+	return result
 
 def doesNotContainDigit(aString):
 	# this SHOULD work !! but it does not !!

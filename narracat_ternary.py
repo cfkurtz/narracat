@@ -265,16 +265,16 @@ def graphOneGiantTernaryPlotOfAllTernarySetValues(questions, stories):
 	graphPNGTernaryPlot(xArray, yArray, zArray, None, 'x', 'y', 'z', name, name, overallPath)
 	print '  done writing giant all ternarySets ternary plot.'
 	
-def graphTernaryPlotValuesPerRespondent(questions, stories, respondents):
+def graphTernaryPlotValuesPerParticipant(questions, stories, participants):
 	if not DATA_HAS_TERNARY_SETS:
 		return
-	print 'writing respondent ternarySets ternary plots...'
-	respondentPath = OUTPUT_PATH + "ternarySet values by respondent" + os.sep
-	if not os.path.exists(respondentPath):
-		os.mkdir(respondentPath)
+	print 'writing participant ternarySets ternary plots...'
+	participantPath = OUTPUT_PATH + "ternarySet values by participant" + os.sep
+	if not os.path.exists(participantPath):
+		os.mkdir(participantPath)
 	graphsWritten = 0
-	for respondent in respondents:
-		values = respondent.gatherTernaryValues(questions)
+	for participant in participants:
+		values = participant.gatherTernaryValues(questions)
 		xArray = []
 		yArray = []
 		zArray = []
@@ -282,11 +282,11 @@ def graphTernaryPlotValuesPerRespondent(questions, stories, respondents):
 			xArray.append(x)
 			yArray.append(y)
 			zArray.append(z)
-		name = "All ternarySet values - %.0f" % float(respondent.id)
-		graphPNGTernaryPlot(xArray, yArray, zArray, None, 'x', 'y', 'z', name, name, respondentPath, drawStats=False)
+		name = "All ternarySet values - %.0f" % float(participant.id)
+		graphPNGTernaryPlot(xArray, yArray, zArray, None, 'x', 'y', 'z', name, name, participantPath, drawStats=False)
 		graphsWritten += 1
 		print '  ... %s graphs written' % graphsWritten
-	print '  done writing respondent ternarySets ternary plots.'
+	print '  done writing participant ternarySets ternary plots.'
 	
 def calculateThirdValueStrengthForTernaryAnswers(questions, stories):
 	closeThreshold = 10

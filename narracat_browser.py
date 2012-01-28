@@ -51,10 +51,10 @@ class TxtboxOut(object):
 		self.T.yview(MOVETO, 1.0)
 
 class NarracatBrowser(Frame):
-	def __init__(self, master=None, questions=None, respondents=None, stories=None):
+	def __init__(self, master=None, questions=None, participants=None, stories=None):
 		Frame.__init__(self, master)
 		self.questions = questions
-		self.respondents = respondents
+		self.participants = participants
 		self.stories = stories
 		self.selections = []
 		self.currentSelectionIndex = 0

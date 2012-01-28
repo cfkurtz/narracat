@@ -20,7 +20,7 @@ def main():
 	root.minsize(300,300)
 	root.geometry("1000x800")
 	root.title("NarraCat: Tools for Narrative Catalysis")
-	app = NarracatLauncher(master=root, questions=None, respondents=None, stories=None)
+	app = NarracatLauncher(master=root, questions=None, participants=None, stories=None)
 	app.mainloop()
 
 if __name__ == "__main__":

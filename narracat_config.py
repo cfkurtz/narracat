@@ -15,9 +15,15 @@
 # better to use the defaults when possible! less to remember
 # -----------------------------------------------------------------------------------------------------------------
 
-PICKLE_FILE_NAME = "pickle.txt"
 DATA_FILE_NAME = "data.csv"
 LABELS_FILE_NAME = "labels.csv"
+PICKLE_FILE_NAME = "pickle.txt"
+
+# to read from two or more data files with the same format, use this method
+# there is no checking for redundancy of participants between files (ie no participant should be in more than one file)
+HAS_MULTIPLE_DATA_FILES = False 
+MULTIPLE_DATA_FILE_NAMES = []
+
 DATA_HAS_THEMES = False
 THEMES_FILE_NAME = "themes.csv"
 
@@ -70,13 +76,20 @@ TYPE_TERNARY = "Three dimension values"
 LINES_TO_SKIP_AT_START_OF_DATA_FILE = 2
 
 # set this higher than will ever be used
-MAX_POSSIBLE_STORIES_PER_RESPONDENT = 15
+MAX_POSSIBLE_STORIES_PER_PARTICIPANT = 15
 # sometimes a person is a line with multiple stories in it; sometimes a person is several lines, one per story
-RESPONDENTS_COVER_MULTIPLE_ROWS_IN_DATA_FILE = True
+PARTICIPANTS_COVER_MULTIPLE_ROWS_IN_DATA_FILE = True
 
-# to be honest I've forgotten what these do - haven't used them in a while - look at the code to find out
+# these help read survey output when stories were elicited one after another (story 1 then story 2, etc)
+# when the questions have identical ids they will be merged
 HAS_SEPARATE_QUESTIONS_FOR_SEPARATE_STORIES = False
-STORY_NUMBER_SUFFIX = None # story number is up to this, if there is one per column
+FORMAT_FILE_HAS_STORY_NUMBER_COLUMN = False # can specify story number of question by separate column in format file
+STORY_NUMBER_SUFFIX = None # or can specify it by a suffix to the field ID
+
+# in some surveys the story title/text can be entered in more than one place
+# this will read only non-blank entries in all possible title/text columns
+MULTIPLE_STORY_TITLE_FIELDS = False
+MULTIPLE_STORY_TEXT_FIELDS = False
 
 # is the question answered in the data, or do you have to figure it out 
 QUESTION_NUMBER_APPEARS_AS_QUESTION = True
@@ -85,7 +98,7 @@ QUESTION_NUMBER_NAMES = ["1", "2", "3", "4", "5", "6"]
 INCLUDE_QUESTION_NUMBER_QUESTION = False
 
 # ways to identify special fields - teller, name, text of story
-RESPONDENT_ID_FIELD = "Name of participant"
+PARTICIPANT_ID_FIELD = "Name of participant"
 STORY_TITLE_FIELD = "Story title"
 STORY_TEXT_FIELD = "Text"
 
@@ -151,10 +164,6 @@ SLICES.append(ALL_DATA_SLICE)
 DATA_HAS_TERNARY_SETS = False
 TERNARY_VALUE_DELIMITER = '"'
 
-# this was for dealing with bug in particular format used in one project; you can almost certainly ignore it
-DATA_HAS_SLIDER_SHIFT_BUG = False
-
-# no idea what this is about - here is my note from before:
 # added merged answers column to data format file in January 2011 
 # this is for backward compatibility with earlier format files - will normally be True
 FORMAT_FILE_HAS_MERGE_COLUMN = True
@@ -175,6 +184,8 @@ SKEW_DIFFERENCE_REPORTING_THRESHOLD = 1.0
 CORRELATION_COEFF_REPORTING_THRESHOLD = 0.2
 CONTINGENCY_PERCENTAGE_THRESHOLD = 0
 INCLUDE_PERCENTAGES_IN_CONTINGENCY_DIAGRAMS = False
+DRAW_COMPARISON_HISTOGRAMS_FOR_SIGNIFICANT_T_TESTS = True
+DRAW_COMPARISON_HISTOGRAMS_FOR_SKEW_DIFFERENCES = True
 
 # how to draw slider data
 NUM_HISTOGRAM_BINS = 10

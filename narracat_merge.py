@@ -16,10 +16,9 @@ import os, csv, sys, random, codecs
 from narracat_constants import *
 from narracat_utils import *
 
-
 def mergeDataFiles_2():
 	dataFileName = DATA_PATH + "Stories metadata missing info added.csv"
-	respondentDataFileName = DATA_PATH + "Storytellers.csv"
+	participantDataFileName = DATA_PATH + "Storytellers.csv"
 	storyTextsFileName = DATA_PATH + "story texts missing info added.csv"
 	outputFileName = DATA_PATH + "merged data.csv"
 	format = '"%s",'
@@ -33,13 +32,13 @@ def mergeDataFiles_2():
 	finally:
 		dataFile.close()
 		
-	respondentDataFile = open(respondentDataFileName, "U")
+	participantDataFile = open(participantDataFileName, "U")
 	try:
-		rowsAsRead = csv.reader(respondentDataFile)
-		respondentDataRows = []
-		respondentDataRows.extend(rowsAsRead)
+		rowsAsRead = csv.reader(participantDataFile)
+		participantDataRows = []
+		participantDataRows.extend(rowsAsRead)
 	finally:
-		respondentDataFile.close()
+		participantDataFile.close()
 		
 	storyTextsFile = open(storyTextsFileName, "U")
 	try:
@@ -55,7 +54,7 @@ def mergeDataFiles_2():
 		for i in range(2):
 			for cell in dataRows[i]:
 				outputFile.write(format % cell)
-			for cell in respondentDataRows[i]:
+			for cell in participantDataRows[i]:
 				outputFile.write(format % cell)
 			# one more for story text
 			outputFile.write(format % "Text")
@@ -75,21 +74,21 @@ def mergeDataFiles_2():
 				for j in range(len(dataRows[i])-colsWritten):
 					outputFile.write(",")
 					colsWritten += 1
-			foundRespondent = False
-			for respondentRow in respondentDataRows:
-				# in story data, respondent name is column 11 (starting at zero)
-				# in respondent data, respondent name is column 9
-				if len(respondentRow) > 0 and respondentRow[9].strip() == dataRow[11].strip():
-					foundRespondent = True
-					for cell in respondentRow:
+			foundParticipant = False
+			for participantRow in participantDataRows:
+				# in story data, participant name is column 11 (starting at zero)
+				# in participant data, participant name is column 9
+				if len(participantRow) > 0 and participantRow[9].strip() == dataRow[11].strip():
+					foundParticipant = True
+					for cell in participantRow:
 						outputFile.write(format % cell)
 						colsWritten += 1
-					if colsWritten < len(respondentRow):
-						for j in range(len(respondentRow)-colsWritten):
+					if colsWritten < len(participantRow):
+						for j in range(len(participantRow)-colsWritten):
 							outputFile.write(",")
 							colsWritten += 1
-			if not foundRespondent:
-				print 'no respondent found for name', dataRow[11]
+			if not foundParticipant:
+				print 'no participant found for name', dataRow[11]
 			titleFound = False
 			for storyTextsRow in storyTextsRows:
 				# in story data, story name is column 9 (starting at zero)
@@ -121,7 +120,7 @@ def mergeDataFiles_2():
 
 def mergeDataFiles_1():
 	dataFileName = DATA_PATH + "some data.csv"
-	respondentDataFileNames = [DATA_PATH + "more data.csv", DATA_PATH + "even more data.csv"]
+	participantDataFileNames = [DATA_PATH + "more data.csv", DATA_PATH + "even more data.csv"]
 	outputFileName = DATA_PATH + "merged data.csv"
 	format = '"%s",'
 	
@@ -135,17 +134,17 @@ def mergeDataFiles_1():
 	finally:
 		dataFile.close()
 		
-	respondentData = {}
-	for respondentDataFileName in respondentDataFileNames:
-		respondentDataFile = open(respondentDataFileName, "U")
-		#respondentDataFile = codecs.open(dataFileName, encoding='utf-8')
+	participantData = {}
+	for participantDataFileName in participantDataFileNames:
+		participantDataFile = open(participantDataFileName, "U")
+		#participantDataFile = codecs.open(dataFileName, encoding='utf-8')
 		try:
-			rowsAsRead = csv.reader(respondentDataFile)
+			rowsAsRead = csv.reader(participantDataFile)
 			rows = []
 			rows.extend(rowsAsRead)
-			respondentData[respondentDataFileName] = rows
+			participantData[participantDataFileName] = rows
 		finally:
-			respondentDataFile.close()
+			participantDataFile.close()
 			
 	outputFile = codecs.open(outputFileName, encoding='utf-8', mode='w+')
 	try:
@@ -153,8 +152,8 @@ def mergeDataFiles_1():
 		for i in range(2):
 			for cell in dataRows[i]:
 				outputFile.write(format % cell)
-			for fileName in respondentData.keys():
-				for cell in respondentData[fileName][i]:
+			for fileName in participantData.keys():
+				for cell in participantData[fileName][i]:
 					outputFile.write(format % cell)
 				# there was a padding bug here but i fixed it by hand
 			outputFile.write("\n")
@@ -172,15 +171,15 @@ def mergeDataFiles_1():
 				for j in range(263-colsWritten):
 					outputFile.write(",")
 					colsWritten += 1
-			for fileName in respondentData.keys():
-				for row in respondentData[fileName]:
+			for fileName in participantData.keys():
+				for row in participantData[fileName]:
 					if len(row) > 0 and row[0].strip() == dataRow[0].strip(): # connecting ID must be in first column of all files
 						matchesForThisRow += 1
 						for cell in row:
 							outputFile.write(format % cell)
 							colsWritten += 1
 						# kludge
-						# note there was a bug here where if a respondent had info in one file but not the other,
+						# note there was a bug here where if a participant had info in one file but not the other,
 						# the cols did not get padded. but it was only one person so i fixed it by hand
 						if fileName.find("screening") >= 0 and colsWritten < 286:
 							for j in range(286-colsWritten):

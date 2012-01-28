@@ -25,25 +25,63 @@ class ColumnDefinition():
 		
 	def readFromRow(self, row, rowIndex):
 		if row:
-			self.id = row[1]
-			self.refersTo = row[2]
-			if self.refersTo == "":
-				self.refersTo = 'story' 
-			self.longName = row[3]
-			self.shortName = row[4]
-			if FORMAT_FILE_HAS_MERGE_COLUMN:
-				self.type = row[9]
-			else: # this is for backward compatibility, added column in January 2011
-				self.type = row[8]
-		
+			# id and link to stories/particicipants
 			if row[0].strip():
 				self.fieldNumber = int(row[0])
 			else:
 				self.fieldNumber = rowIndex
-				
-			self.codes = self.listFromStringRemovingBlankLines(row[5])
-			self.longResponseNames = self.listFromStringRemovingBlankLines(row[6])
-			
+			self.id = row[1]
+			self.refersTo = row[2]
+			if self.refersTo == "":
+				self.refersTo = 'story' 
+			# display names
+			self.longName = row[3]
+			self.shortName = row[4]
+			# answers
+			self.codes = listFromStringRemovingBlankLines(row[5])
+			self.longResponseNames = listFromStringRemovingBlankLines(row[6])
+			self.shortResponseNames = listFromStringRemovingBlankLines(row[7])
+			if FORMAT_FILE_HAS_MERGE_COLUMN and USE_MERGED_ANSWERS:
+				mergedShortResponseNames = listFromStringRemovingBlankLines(row[8])
+				self.shortResponseNames = []
+				self.shortResponseNames.extend(mergedShortResponseNames)				
+			# type of question
+			if FORMAT_FILE_HAS_MERGE_COLUMN:
+				self.type = row[9]
+			else: # this is for backward compatibility, added merge column in January 2011
+				self.type = row[8]
+			# optional story number (for surveys in which one story elicitation comes after another)
+			if HAS_SEPARATE_QUESTIONS_FOR_SEPARATE_STORIES:
+				if self.refersTo in ["participant", "discard"]:
+					self.appliesToStoryNumber = 0 
+				else:
+					if FORMAT_FILE_HAS_STORY_NUMBER_COLUMN:
+						if FORMAT_FILE_HAS_MERGE_COLUMN:
+							storyNumberText = row[10]
+						else:
+							storyNumberText = row[9]
+						if storyNumberText.strip():
+							try:
+								storyNumber = int(storyNumberText.strip())
+								self.appliesToStoryNumber = storyNumber
+							except:
+								raise Exception('Input error: Invalid number in story number field: "%s"' % storyNumberText)
+						else:
+							self.appliesToStoryNumber = 0
+					else: # this is for backward compatibility, added story number column in January 2012 
+						self.appliesToStoryNumber = 0
+						storyNumberText = stringBeyond(self.id, STORY_NUMBER_SUFFIX)
+						if storyNumberText.strip():
+							try:
+								storyNumber = int(storyNumberText.strip())
+								self.appliesToStoryNumber = storyNumber
+							except:
+								raise Exception('Input error: Invalid number in story number suffix: "%s"' % storyNumberText)
+						else:
+							self.appliesToStoryNumber = 0
+			else:
+				self.appliesToStoryNumber = -1
+			# set up special numbers list for sliders and ternary data
 			if self.type in [TYPE_SLIDER, TYPE_TERNARY]:
 				if SLIDERS_ARE_SINGLE_COLUMNS:
 					self.codes = []
@@ -52,52 +90,11 @@ class ColumnDefinition():
 					self.longResponseNames.extend(SLIDER_SHORT_NAMES)
 					self.shortResponseNames = []
 					self.shortResponseNames.extend(SLIDER_SHORT_NAMES)
-				else:
-					self.shortResponseNames = self.listFromStringRemovingBlankLines(row[7])
-					if FORMAT_FILE_HAS_MERGE_COLUMN and USE_MERGED_ANSWERS:
-						lumpedNames = self.listFromStringRemovingBlankLines(row[8])
-						if lumpedNames:
-							self.shortResponseNames = []
-							self.shortResponseNames.extend(lumpedNames)
 				if PART_OF_SLIDER_NAME_TO_HIDE_FROM_GRAPHS:
 					if self.shortName.find(PART_OF_SLIDER_NAME_TO_HIDE_FROM_GRAPHS) >= 0:
 						self.type = TYPE_SLIDER_DO_NOT_GRAPH
-			else:
-				self.shortResponseNames = self.listFromStringRemovingBlankLines(row[7])
-				if FORMAT_FILE_HAS_MERGE_COLUMN and USE_MERGED_ANSWERS:
-					lumpedNames = self.listFromStringRemovingBlankLines(row[8])
-					if lumpedNames:
-						self.shortResponseNames = []
-						self.shortResponseNames.extend(lumpedNames)
-					
-			if self.type == TYPE_MULTI_CHOICE:
-				self.idWithListReference = "%s-%s" % (self.id, self.codes[0])
-			else:
-				self.idWithListReference = self.id
-				
-			if HAS_SEPARATE_QUESTIONS_FOR_SEPARATE_STORIES:
-				self.storyNumber = 0
-				# find out which story (if any) it refers to
-				if self.refersTo in ["participant", "discard"]:
-					self.storyNumber = 0 
-				else:
-					storyNumberText = stringBeyond(self.id, "Branch")
-					self.storyNumber = int(storyNumberText) 
-			else:
-				self.storyNumber = -1
-
-			#print 'creating ColumnDefinition for ', self.id, self.refersTo, self.type, self.storyNumber
+			#print 'creating ColumnDefinition for ', self.id, self.refersTo, self.type, self.appliesToStoryNumber
 			
-	def listFromStringRemovingBlankLines(self, aString):
-		result = []
-		pieces = aString.split("\n")
-		for piece in pieces:
-			if piece:
-				result.append(piece)
-		return result
-				
-	# simple gets ---------------------------------------------
-	
 	def shortResponseNameForCode(self, code):
 		i = 0
 		for aCode in self.codes:
@@ -105,17 +102,11 @@ class ColumnDefinition():
 				return self.shortResponseNames[i]
 			i += 1
 		return ""
-	
-	def idWithoutStoryNumber(self):
-		if self.storyNumber >= 0: 
-			return stringUpTo(self.id, STORY_NUMBER_SUFFIX)
-		else:
-			return self.id
-	
+		
 # -----------------------------------------------------------------------------------------------------------------
 class Question():
 # -----------------------------------------------------------------------------------------------------------------
-	def __init__(self, id=None, refersTo=None, longName=None, shortName=None, type=None, codes=None, longResponseNames=None, shortResponseNames=None, storyNumber=None):
+	def __init__(self, id=None, refersTo=None, longName=None, shortName=None, type=None, codes=None, longResponseNames=None, shortResponseNames=None):
 		self.id = id
 		self.refersTo = refersTo
 		self.longName = longName
@@ -127,7 +118,6 @@ class Question():
 		self.longResponseNames.extend(longResponseNames)
 		self.shortResponseNames = []
 		self.shortResponseNames.extend(shortResponseNames)
-		self.storyNumber = storyNumber
 	
 	# simple gets ---------------------------------------------
 	
@@ -138,7 +128,7 @@ class Question():
 		return self.type == TYPE_SLIDER
 	
 	def veryShortName(self):
-		# often different for each project
+		# sometimes method of reporting the short name is different in different projects
 		if self.shortName.find(":") >= 0:
 			return stringUpTo(self.shortName, ":")
 		else:
@@ -222,6 +212,17 @@ class Question():
 		else:
 			return None
 		
+	def gatherNumberOfMissingValuesIfScale(self, stories, slice=ALL_DATA_SLICE):
+		if self.isScale():
+			count = 0
+			for story in stories:
+				if story.matchesSlice(slice):
+					if story.gatherAnswersForQuestionID(self.id) is None:
+						count += 1
+			return count
+		else:
+			return None
+		
 	def gatherNumberOfNAsIfTernarySet(self, stories, slice=ALL_DATA_SLICE):
 		if self.type == TYPE_TERNARY:
 			answers = self.gatherAnswersFromStories(stories, slice=slice)
@@ -282,11 +283,12 @@ class Question():
 		return names, counts
 	
 # -----------------------------------------------------------------------------------------------------------------
-class Respondent():
+class Participant():
 # -----------------------------------------------------------------------------------------------------------------
 	def __init__(self, row, rowIndex, columnDefinitions):
+		self.id = None
 		self.stories = []
-		for i in range(MAX_POSSIBLE_STORIES_PER_RESPONDENT):
+		for i in range(MAX_POSSIBLE_STORIES_PER_PARTICIPANT):
 			story = Story()
 			self.stories.append(story)
 		self.readDataFromRowAndColumnDefinitions(row, rowIndex, columnDefinitions)
@@ -301,89 +303,60 @@ class Respondent():
 	def readDataFromRowAndColumnDefinitions(self, row, rowIndex, columnDefinitions):
 		overallStoryIndex = self.findFirstBlankStoryIndex()
 		colIndex = 0
-		shiftColDefLookupBy = 0
-		
 		#print 'row', rowIndex
-			
 		while colIndex < len(row):
-			
 			cell = row[colIndex].strip()
-			
-			#print ' --- > cell', cell, 'shiftColDefLookupBy', shiftColDefLookupBy
-			
-			# find definition saying what column means
+			# first, find definition saying what the current column means
 			colDef = None
 			for aColDef in columnDefinitions:
-				if aColDef.fieldNumber-1 == colIndex + shiftColDefLookupBy:
+				if aColDef.fieldNumber-1 == colIndex:
 					colDef = aColDef
 			if not colDef:
-				print 'COULD NOT FIND DEFINITION FOR COLUMN INDEX', colIndex
+				print 'Input error: could not find column definition to match data column number %s (data is "%s")' % (colIndex, cell)
 				colIndex += 1
 				continue 
-			
-			# deal with columns that refer to a numbered story
-			if colDef.storyNumber >= 0:
-				storyIndex = colDef.storyNumber-1
-			else:
-				storyIndex = overallStoryIndex
-				
-			# skip columns marked as discardable
-			if colDef.refersTo == "discard":
+			# after you know the column definition, read the data
+			if colDef.refersTo == "discard": # skip columns marked as discardable
 				pass
-			
-			# participant data
-			elif colDef.refersTo == "participant":
-				
-				# if this is the ID field, record it
-				#print colDef.id, RESPONDENT_ID_FIELD
-				if colDef.id.find(RESPONDENT_ID_FIELD) >= 0:
-					#print 'found RESPONDENT_ID_FIELD'
+			elif colDef.refersTo == "participant": # read data for participant
+				#print colDef.id, PARTICIPANT_ID_FIELD
+				if colDef.id.find(PARTICIPANT_ID_FIELD) >= 0:
+					#print 'found PARTICIPANT_ID_FIELD'
 					for story in self.stories:
-						story.respondentPassword = cell
+						story.participantID = cell
 						self.id = cell 
 				else:
-					# apply data about participant to ALL stories that belong to it
-					# this skip bug is a problem in one particular data format where blank scale values shift the line one cell
-					# may not be necessary to keep
-					for story in self.stories:
-						datatHasSkipBugAndScaleCellIsEmpty = self.processCellForStory(cell, colDef, story, removeStoryNumber=False)
-					if datatHasSkipBugAndScaleCellIsEmpty:
-						shiftColDefLookupBy -= 1
-						colIndex += 1
+					for story in self.stories: # apply data about participant to ALL the stories they told
+						self.processCellForStory(cell, colDef, story)
 			else: # story data
-				
-				# story title
-				if colDef.id.find(STORY_TITLE_FIELD) >= 0:
-					if cell:
-						self.stories[storyIndex].title = cell
+				# deal with columns that refer to a numbered story - must do this first so we are pointing to the right story
+				if colDef.appliesToStoryNumber > 0:
+					storyIndex = colDef.appliesToStoryNumber - 1
+				else:
+					storyIndex = overallStoryIndex
+				# now apply title, text and metadata to story
+				if colDef.id.find(STORY_TITLE_FIELD) >= 0: # story title
+					if MULTIPLE_STORY_TITLE_FIELDS:
+						if (not self.stories[storyIndex].title) and cell: 
+							self.stories[storyIndex].title = textOrDefaultIfBlank(cell, NO_STORY_TITLE)
 					else:
-						self.stories[storyIndex].title = NO_STORY_TITLE
-					self.stories[storyIndex].number = storyIndex
+						self.stories[storyIndex].title = textOrDefaultIfBlank(cell, NO_STORY_TITLE)
+					self.stories[storyIndex].number = storyIndex # only do this once
 					if (not QUESTION_NUMBER_APPEARS_AS_QUESTION) and INCLUDE_QUESTION_NUMBER_QUESTION:
 						self.stories[storyIndex].addAnswer(QUESTION_NUMBER_ID, QUESTION_NUMBER_NAMES[storyIndex]) 
-						
-				# deal with story text
-				elif colDef.id.find(STORY_TEXT_FIELD) >= 0:
-					value = cell
-					if not value.strip():
-						value = NO_STORY_TEXT
-					self.stories[storyIndex].text = value
-					
+				elif colDef.id.find(STORY_TEXT_FIELD) >= 0: # story text
+					if MULTIPLE_STORY_TEXT_FIELDS:
+						if (not self.stories[storyIndex].text) and cell: 
+							self.stories[storyIndex].text = textOrDefaultIfBlank(cell, NO_STORY_TEXT)
+					else:
+						self.stories[storyIndex].text = textOrDefaultIfBlank(cell, NO_STORY_TEXT)
 				else:
-					
-					# deal with all other data about story
-					datatHasSkipBugAndScaleCellIsEmpty = self.processCellForStory(cell, colDef, self.stories[storyIndex], removeStoryNumber=True)
-					if datatHasSkipBugAndScaleCellIsEmpty:
-						shiftColDefLookupBy -= 1
-						colIndex += 1
+					self.processCellForStory(cell, colDef, self.stories[storyIndex]) # all other data about story
 			colIndex += 1
 			
-	def processCellForStory(self, cell, colDef, story, removeStoryNumber):
-		
+	def processCellForStory(self, cell, colDef, story):
 		type = colDef.type
 		valuesToAdd = []
-		datatHasSkipBugAndScaleCellIsEmpty = False
-		
 		if type == TYPE_SINGLE_CHOICE:
 			if type in DATA_TYPES_WITH_CODES:
 				if COLUMN_VALUES_ARE_ALL_ONES: 
@@ -393,13 +366,10 @@ class Respondent():
 						value = None
 				else:
 					value = self.codeLookup(colDef, cell)
-				#if cell:
-				#	print '  cell', cell, 'id', colDef.id, 'codes', colDef.codes, 'value', value
 			else:
 				value = cell
 			if value:
 				valuesToAdd.append(value)
-				
 		elif type == TYPE_MULTI_CHOICE:
 			if type in DATA_TYPES_WITH_CODES:
 				if COLUMN_VALUES_ARE_ALL_ONES: 
@@ -413,7 +383,6 @@ class Respondent():
 				value = cell
 			if value:
 				valuesToAdd.append(value)
-				
 		elif type == TYPE_MULTIPLE_CHOICE_DELIMITED:
 			if cell:
 				pieces = cell.split(MULTIPLE_CHOICE_DELIMITED_DELIMITER)
@@ -425,56 +394,44 @@ class Respondent():
 							value = piece.strip()
 						if value:
 							valuesToAdd.append(value)
-		
 		elif type == TYPE_STORY_BOX:
 			if cell:
 				valuesToAdd.append(cell)
-			
 		elif type == TYPE_COMMENT_BOX:
 			if cell:
 				valuesToAdd.append(cell)
-				
 		elif type == TYPE_REGULAR_TEXT_BOX:
 			if cell:
 				valuesToAdd.append(cell)
-				
 		elif type == TYPE_NUMERICAL_TEXT_BOX:
 			if cell:
 				valuesToAdd.append(cell)
-		
 		elif type == TYPE_SLIDER:
-			if DATA_HAS_SLIDER_SHIFT_BUG and not cell:
-				datatHasSkipBugAndScaleCellIsEmpty = True
-				value = DOES_NOT_APPLY
-			else:
-				if type in DATA_TYPES_WITH_CODES:
-					if COLUMN_VALUES_ARE_ALL_ONES:
-						if cell == "1":
-							value = colDef.shortResponseNameForCode(colDef.codes[0])
-						else:
-							value = None
+			if type in DATA_TYPES_WITH_CODES:
+				if COLUMN_VALUES_ARE_ALL_ONES:
+					if cell == "1":
+						value = colDef.shortResponseNameForCode(colDef.codes[0])
 					else:
-						if SLIDER_VALUE_HAS_TWO_DELIMITED_PARTS:
-							code = stringUpTo(cell, TWO_PART_SLIDER_VALUE_DELIMITER)
-							if code and SLIDER_SECOND_PART_IS_MAXIMUM:
-								maximum = stringBeyond(cell, TWO_PART_SLIDER_VALUE_DELIMITER)
-								number = int(code)
-								maxNumber = int(maximum)
-								code = str(max(SLIDER_START, min(SLIDER_END, int(number * 100.0 / maxNumber))))
-						else:
-							code = cell
-						if code and colDef.id in SLIDERS_TO_REVERSE:
-							code = str(SLIDER_END - int(code) + SLIDER_START)
-						value = self.codeLookup(colDef, code)
-						#if code:
-						#	print '  code', code, 'id', colDef.id, 'codes', colDef.codes, 'value', value
+						value = None
 				else:
-					value = cell
-					if not value:
-						value = DOES_NOT_APPLY
+					if SLIDER_VALUE_HAS_TWO_DELIMITED_PARTS:
+						code = stringUpTo(cell, TWO_PART_SLIDER_VALUE_DELIMITER)
+						if code and SLIDER_SECOND_PART_IS_MAXIMUM:
+							maximum = stringBeyond(cell, TWO_PART_SLIDER_VALUE_DELIMITER)
+							number = int(code)
+							maxNumber = int(maximum)
+							code = str(max(SLIDER_START, min(SLIDER_END, int(number * 100.0 / maxNumber))))
+					else:
+						code = cell
+					if code and colDef.id in SLIDERS_TO_REVERSE:
+						code = str(SLIDER_END - int(code) + SLIDER_START)
+					value = self.codeLookup(colDef, code)
+			else:
+				value = cell
+				if not value:
+					value = DOES_NOT_APPLY
 			if value:
 				valuesToAdd.append(value)
-		
 		elif type == TYPE_TERNARY:
 			if type in DATA_TYPES_WITH_CODES:
 				value = self.codeLookup(colDef, cell)
@@ -483,22 +440,15 @@ class Respondent():
 			if value:
 				valuesToAdd.append(value)
 				
-		if removeStoryNumber:
-			colDefIDToUse = colDef.idWithoutStoryNumber()
-		else:
-			colDefIDToUse = colDef.id
-			
 		for valueToAdd in valuesToAdd:
 			if valueToAdd:
-				story.addAnswer(colDefIDToUse, valueToAdd)
+				story.addAnswer(colDef.id, valueToAdd)
 				
-		return datatHasSkipBugAndScaleCellIsEmpty
-	
 	def codeLookup(self, colDef, code):
 		if code:
 			value = colDef.shortResponseNameForCode(code)
 			if not value:
-				print 'NO MATCH:', colDef.id, colDef.codes, '---', code
+				print 'Input error: No matching answer code found for "%s" in column "%s", which has the codes "%s"' % (code, colDef.id, colDef.codes)
 		else:
 			value = None 
 		return value
@@ -515,10 +465,10 @@ class Respondent():
 		for story in self.stories:
 			story.number = i
 			i += 1
-		#print 'for respondent %s, %s empty stories were removed' % (self.id, numStoriesRemoved)
+		#print 'for participant %s, %s empty stories were removed' % (self.id, numStoriesRemoved)
 		
-	def acceptStoriesFrom(self, aRespondent):
-		for story in aRespondent.stories:
+	def acceptStoriesFrom(self, aParticipant):
+		for story in aParticipant.stories:
 			self.stories.append(story)
 			
 	# gathering data from stories ---------------------------------------------
@@ -587,8 +537,14 @@ class Story():
 		self.title = ''
 		self.text = ''
 		self.number = 0
-		self.respondentPassword = ''
+		self.participantID = ''
 		self.answers = {}
+		
+	def prettyTitleAndText(self):
+		result = ""
+		result += "%s\n\n%s\n\n" % (self.title, self.text)
+		result += "-------------------------\n"
+		return result
 		
 	def allDetailsForDisplay(self, questions, includeCodes=False):
 		result = ""
@@ -618,7 +574,7 @@ class Story():
 		resultStrings.append("-------------------------\n")
 		result += "".join(resultStrings)
 		result = result.replace("\t", " ") # for some reason there are tabs in it?
-		result += 'Respondent password: %s\n\n\n' % self.respondentPassword
+		result += 'Participant ID: %s\n\n\n' % self.participantID
 		return result
 		
 	# adding data ---------------------------------------------
@@ -802,16 +758,16 @@ def gatherChoiceQuestionAnswers(questions):
 					result.append((question, answer))
 	return result
 
-def gatherRespondentIDs(respondents):
+def gatherParticipantIDs(participants):
 	result = []
-	for respondent in respondents:
-		result.append(respondent.id)
+	for participant in participants:
+		result.append(participant.id)
 	return result
 
-def gatherScaleValuesByRespondent(questions, respondents, slice=ALL_DATA_SLICE):
+def gatherScaleValuesByParticipant(questions, participants, slice=ALL_DATA_SLICE):
 	result = []
-	for respondent in respondents:
-		values = respondent.gatherScaleValues(questions, slice=slice)
+	for participant in participants:
+		values = participant.gatherScaleValues(questions, slice=slice)
 		if values:
 			result.append(values)
 	return result
@@ -964,6 +920,14 @@ def printNamesOfStoriesWithNoArchetypeData(stories, questions):
 		print story.title
 
 def themeCountsForSelectedStories(stories, themeFileName):
+	# columns in themes file:
+	# 1: story title
+	# 2: text to find in story text if title does not match (use for multiple untitled stories, leave blank otherwise)
+	# 3: first theme for story
+	# 4: second theme
+	# 5: third theme
+	# themes and story titles must be identical matches to be counted correctly; use copy and paste rather than retyping
+	# "data output" option writes out empty themes file in case of need; start with that and fill it out.
 	themesAndCounts = {}
 	themesFile = open(themeFileName, "U")
 	try:
@@ -988,7 +952,7 @@ def themeCountsForSelectedStories(stories, themeFileName):
 			match = False
 			for storyTitle in storyTitlesAndThemes:
 				naSearchTerm = row[1].strip()
-				match = (storyTitle.strip() == story.title.strip())# or (story.text.find(naSearchTerm) >= 0)
+				match = (storyTitle.strip() == story.title.strip()) or (naSearchTerm and story.text.find(naSearchTerm) >= 0)
 				if match:
 					themesForThisStory = storyTitlesAndThemes[storyTitle]
 					for themeName in themesForThisStory:
@@ -1017,21 +981,16 @@ def findStoriesWithText(stories, text):
 # reading data
 # -----------------------------------------------------------------------------------------------------------------
 
-def readDataFromCSVFiles(dataFileName, labelsFileName):
+def readDataFromCSVFiles(dataFileName, labelsFileName, readMultipleDataFiles, dataFileNamesList):
 	print 'reading data from CSV files ...'
-	
 	columnDefinitions = []
 	questions = []
-	respondents = []
+	participants = []
 	stories = []
-	
-	dataFile = open(dataFileName, "U")
 	labelsFile = open(labelsFileName, "U")
-	
 	try:
 		labels = csv.reader(labelsFile)
-		
-		# first, read column definitions that say what each column means
+		# ================== first, read column definitions that say what each column means
 		rowIndex = 0
 		for row in labels:
 			if rowIndex == 0: # skip header row
@@ -1041,12 +1000,10 @@ def readDataFromCSVFiles(dataFileName, labelsFileName):
 				continue
 			if len(row) > 2:
 				colDef = ColumnDefinition(row, rowIndex)
-				#print 'using ColumnDefinition to read data ', colDef.id, colDef.codes, colDef.shortResponseNames
+				#print 'using column definition to read data ', colDef.id, colDef.codes, colDef.shortResponseNames
 				columnDefinitions.append(colDef)
 			rowIndex += 1
-			
-				
-		# next, build question list from column definitions
+		# ================== next, build question list from column definitions
 		for colDef in columnDefinitions:
 			makeNewQuestion = False
 			if colDef.type in DATA_TYPES_WITH_MULTIPLE_COLUMNS_PER_QUESTION: 
@@ -1060,111 +1017,172 @@ def readDataFromCSVFiles(dataFileName, labelsFileName):
 					makeNewQuestion = True
 			else:
 				makeNewQuestion = True
-			makeNewQuestion = makeNewQuestion and not colDef.id in [RESPONDENT_ID_FIELD, STORY_TEXT_FIELD, STORY_TITLE_FIELD]
+			makeNewQuestion = makeNewQuestion and not colDef.id in [PARTICIPANT_ID_FIELD, STORY_TEXT_FIELD, STORY_TITLE_FIELD]
 			if makeNewQuestion:
 				question = Question(colDef.id, colDef.refersTo, colDef.longName, colDef.shortName, colDef.type, 
-								colDef.codes, colDef.longResponseNames, colDef.shortResponseNames, colDef.storyNumber)
+								colDef.codes, colDef.longResponseNames, colDef.shortResponseNames)
 				questions.append(question)
-				
-		#for colDef in columnDefinitions:
-		#	print colDef.id, colDef.codes, colDef.shortResponseNames
-		
-		#for question in questions:
-		#	print question.id, '|', question.shortName, '|', question.type,'|', question.shortResponseNames
-				
-		# now remove questions marked "discard" and duplicate questions
+		#printColumnDefinitionsToCheckTheyWereReadRight(columnDefinitions)
+		#printQuestionsToCheckTheyWereReadRight(questions, 'before removing discards and duplicates')
+		# ================== now trim question list as required
+		# remove questions marked "discard" 
 		questionsToKeep = []
 		for question in questions:
 			if question.refersTo != "discard" :
-				if  question.refersTo == "participant":
 					questionsToKeep.append(question)
-				else:
-					if HAS_SEPARATE_QUESTIONS_FOR_SEPARATE_STORIES:
-						if question.id.find(STORY_NUMBER_SUFFIX) >= 0:
-							question.id = stringUpTo(question.id, STORY_NUMBER_SUFFIX)
-							questionsToKeep.append(question)
-					else:
-						questionsToKeep.append(question)
 		questions = []
 		questions.extend(questionsToKeep)
-		
-		#for question in questions:
-		#	print question.id, '|', question.type,'|', question.codes, '|', question.shortResponseNames
-		
-		# finally, read data, using column definitions to connect stories to questions
-		
-		if True:
-		
-			data = csv.reader(dataFile)
-			rowIndex = 0
-			for row in data:
-				if rowIndex < LINES_TO_SKIP_AT_START_OF_DATA_FILE: # skip header row
-					pass
-				else:
-					respondent = Respondent(row, rowIndex, columnDefinitions)
-					if respondent.stories:
-						respondents.append(respondent)
-				rowIndex += 1
-						
-			if RESPONDENTS_COVER_MULTIPLE_ROWS_IN_DATA_FILE:
-				respondentsPerPassword = {}
-				for respondent in respondents:
-					if not respondentsPerPassword.has_key(respondent.id):
-						respondentsPerPassword[respondent.id] = []
-					respondentsPerPassword[respondent.id].append(respondent)
-				#for key in respondentsPerPassword:
-				#	print key, len(respondentsPerPassword[key])
-				# transfer stories to first in each list
-				respondentsToDelete = []
-				for key in respondentsPerPassword:
-					respondentsWithThisPassword = respondentsPerPassword[key]
-					if len(respondentsWithThisPassword) > 1:
-						respondentToHoldStories = respondentsWithThisPassword[0]
-						for respondentToGetStoriesFrom in respondentsWithThisPassword[1:]:
-							respondentToHoldStories.acceptStoriesFrom(respondentToGetStoriesFrom)
-							respondentsToDelete.append(respondentToGetStoriesFrom)
-				# remove extra respondents
-				for respondentToDelete in respondentsToDelete:
-					respondents.remove(respondentToDelete)
-					
-			for respondent in respondents:
-				respondent.removeEmptyStories()
-				
-			for respondent in respondents:
-				stories.extend(respondent.stories)
-			
-			# finally, add question for story number, so it will come out in graphs
+		#printQuestionsToCheckTheyWereReadRight(questions, 'after removing discards, before removing duplicates')
+		# if multiple questions are the same but refer to multiple stories, merge them
+		if HAS_SEPARATE_QUESTIONS_FOR_SEPARATE_STORIES:
+			questionsToKeep = []
+			for question in questions:
+				if question.refersTo == "participant":
+					questionsToKeep.append(question)
+				if question.refersTo == "story":
+					foundAnotherQuestionWithSameID = False
+					for anotherQuestion in questionsToKeep:
+						if anotherQuestion.id == question.id:
+							foundAnotherQuestionWithSameID = True
+							break
+					if not foundAnotherQuestionWithSameID:
+						questionsToKeep.append(question)
+			questions = []
+			questions.extend(questionsToKeep)
+			# finally, add question for story number (if it was not there already), so it will come out in graphs
+			# note, if there are more than 7 possible stories this must be increased
 			if INCLUDE_QUESTION_NUMBER_QUESTION and not QUESTION_NUMBER_APPEARS_AS_QUESTION:
-				questions.append(Question(QUESTION_NUMBER_ID, 'story', QUESTION_NUMBER_ID, QUESTION_NUMBER_ID, TYPE_SINGLE_CHOICE, 
-										['1', '2', '3', '4', '5', '6', '7'], QUESTION_NUMBER_NAMES, QUESTION_NUMBER_NAMES, 
-										True, 0)) 
-				
+				newQuestion = Question(QUESTION_NUMBER_ID, 'story', QUESTION_NUMBER_ID, QUESTION_NUMBER_ID, 
+									TYPE_SINGLE_CHOICE, ['1', '2', '3', '4', '5', '6', '7'], 
+									QUESTION_NUMBER_NAMES, QUESTION_NUMBER_NAMES, True)
+				questions.append(newQuestion) 
+			#printQuestionsToCheckTheyWereReadRight(questions, 'after removing discards and duplicates')
 	finally:
-		dataFile.close()
 		labelsFile.close()
-	
-	print '  done reading data from CSV files: %s stories, %s respondents, %s questions.' % (len(stories), len(respondents), len(questions))
-	return questions, respondents, stories
+		
+	if True: # this is only here so you can turn off the actual data reading if you are testing reading the questions first
+		
+		if readMultipleDataFiles:
+			dataFileNamesToRead = dataFileNamesList
+		else:
+			dataFileNamesToRead = [dataFileName]
+			
+		for oneDataFileName in dataFileNamesToRead:
+			try:
+				dataFile = open(oneDataFileName, "U")
+				# ================== read data, using column definitions to connect stories to questions
+				data = csv.reader(dataFile)
+				rowIndex = 0
+				for row in data:
+					if rowIndex < LINES_TO_SKIP_AT_START_OF_DATA_FILE: # skip header row(s)
+						pass
+					else:
+						participant = Participant(row, rowIndex, columnDefinitions) # the participant reads the stories
+						participants.append(participant)
+					rowIndex += 1
+			finally:
+				dataFile.close()
+						
+		# if one participant covers multiple rows, there will be too many participants at this point; they must be merged
+		if PARTICIPANTS_COVER_MULTIPLE_ROWS_IN_DATA_FILE:
+			participantIDDictionary = {}
+			for participant in participants:
+				if not participantIDDictionary.has_key(participant.id):
+					participantIDDictionary[participant.id] = []
+				participantIDDictionary[participant.id].append(participant)
+			# transfer stories to first in each list
+			participantsToDelete = []
+			for key in participantIDDictionary:
+				participantsWithThisID = participantIDDictionary[key]
+				if len(participantsWithThisID) > 1:
+					participantToHoldStories = participantsWithThisID[0]
+					for participantToGetStoriesFrom in participantsWithThisID[1:]:
+						participantToHoldStories.acceptStoriesFrom(participantToGetStoriesFrom)
+						participantsToDelete.append(participantToGetStoriesFrom)
+			# remove extra participants
+			for participantToDelete in participantsToDelete:
+				participants.remove(participantToDelete)
+				
+		# more stories are created at the start than may be filled; remove empty ones
+		for participant in participants:
+			participant.removeEmptyStories()
+			
+		# remove participants who told no stories
+		#printParticipantsToCheckTheyWereReadRight(questions, participants, 'before removing no-story participants')
+		participantsToKeep = []
+		for participant in participants:
+			if len(participant.stories) > 0:
+				participantsToKeep.append(participant)
+		participants = []
+		participants.extend(participantsToKeep)
+		
+		# create global list of stories
+		for participant in participants:
+			stories.extend(participant.stories)
+			
+		# final run-through to fix any missing story titles
+		# can end up unassigned in some cases
+		for story in stories:
+			if not story.title:
+				story.title = NO_STORY_TITLE
+			
+	#printStoriesToCheckTheyWereReadRight(questions, stories)
+	#printParticipantsToCheckTheyWereReadRight(questions, participants)
+	print '  done reading data from CSV files: %s stories, %s participants, %s questions.' % (len(stories), len(participants), len(questions))
+	return questions, participants, stories
 
-def printDataToCheckItWasReadRight(questions, stories, respondents):
+def printColumnDefinitionsToCheckTheyWereReadRight(columnDefinitions, extraComment=''):
+	print '---------------------------------------------------------'
+	print '%s column definitions as read' %  len(columnDefinitions), extraComment
+	print '---------------------------------------------------------'
+	for colDef in columnDefinitions:
+		print '  ', colDef.fieldNumber, colDef.id, colDef.codes, colDef.shortResponseNames
+	print '---------------------------------------------------------'
+		
+def printQuestionsToCheckTheyWereReadRight(questions, extraComment=''):
+	print '---------------------------------------------------------'
+	print '%s questions' %  len(questions), extraComment
+	print '---------------------------------------------------------'
+	i = 1
+	for question in questions:
+		print '  ', i, question.id, '|', question.shortName, '|', question.type,'|', question.shortResponseNames
+		i += 1
+	print '---------------------------------------------------------'
+
+def printStoriesToCheckTheyWereReadRight(questions, stories, extraComment=''):
+	print '---------------------------------------------------------'
+	print '%s stories' % len(stories), extraComment
+	print '---------------------------------------------------------'
 	i = 0
 	for story in stories:
 		print '---------------------------------------------------------'
 		print "Title: ", story.title
 		print story.text[:100] # not the whole thing!
 		if i <= 1000: # to check just first few 
-			for key in story.answers:
+			sortedKeys = []
+			sortedKeys.extend(story.answers.keys())
+			sortedKeys.sort()
+			for key in sortedKeys:
 				print '	', key, story.answers[key]
 		i += 1
 	print '---------------------------------------------------------'
+	
+def printParticipantsToCheckTheyWereReadRight(questions, participants, extraComment=''):
 	print '---------------------------------------------------------'
-	for question in questions:
-		print question.refersTo, "|", question.id, "|", question.shortName, "|", question.type
+	print '%s participants' %  len(participants), extraComment
 	print '---------------------------------------------------------'
+	for numStories in range(1, MAX_POSSIBLE_STORIES_PER_PARTICIPANT+1):
+		numParticipantsWhoToldThisManyStories = 0
+		for participant in participants:
+			if len(participant.stories) == numStories:
+				numParticipantsWhoToldThisManyStories += 1
+		if numStories == 1: # i hate things that say "1 stories"
+			print '%s participants told %s story' % (numParticipantsWhoToldThisManyStories, numStories)
+		else:
+			print '%s participants told %s stories' % (numParticipantsWhoToldThisManyStories, numStories)
+	for participant in participants:
+		print '    participant with id', participant.id, 'told', len(participant.stories), 'stories'
 	print '---------------------------------------------------------'
-	for respondent in respondents:
-		print '  respondent with id', respondent.id, 'told', len(respondent.stories), 'stories'
-	print '%s stories, %s respondents, %s questions' % (len(stories), len(respondents), len(questions))
 	
 def printResultForSpecificQuestionID(questions, stories, questionID):
 	numAnswers = 0
@@ -1175,26 +1193,26 @@ def printResultForSpecificQuestionID(questions, stories, questionID):
 			numAnswers += len(answers)
 	print '%s stories, %s answers to %s' % (len(stories), numAnswers, questionID)
 	
-def readData(pickleFileName, dataFileName, labelsFileName, forceReread=False):
+def readData(pickleFileName, dataFileName, labelsFileName, readMultipleDataFiles, dataFileNamesList, forceReread=False):
 	if os.path.exists(pickleFileName) and not forceReread:
 		print 'reading data from pickle file ...'
 		pickleFile = open(pickleFileName, 'rb')
 		allData = pickle.load(pickleFile)
 		questions = allData[0]
-		respondents = allData[1]
+		participants = allData[1]
 		stories = allData[2]
-		print '   done reading data from pickle file: %s stories, %s respondents, %s questions.' % (len(stories), len(respondents), len(questions))
+		print '   done reading data from pickle file: %s stories, %s participants, %s questions.' % (len(stories), len(participants), len(questions))
 	else:
-		questions, respondents, stories = readDataFromCSVFiles(dataFileName, labelsFileName)
+		questions, participants, stories = readDataFromCSVFiles(dataFileName, labelsFileName, readMultipleDataFiles, dataFileNamesList)
 		print 'writing pickle file ...'
 		allData = []
 		allData.append(questions)
-		allData.append(respondents)
+		allData.append(participants)
 		allData.append(stories)
 		outputFile = open(DATA_PATH + PICKLE_FILE_NAME, 'wb')
 		pickle.dump(allData, outputFile, 01)
 		print '  done writing pickle file.'
-	return questions, respondents, stories
+	return questions, participants, stories
 
 # -----------------------------------------------------------------------------------------------------------------
 # writing data for use in spreadsheet
@@ -1205,10 +1223,9 @@ def writeSimplifiedDataToCSV(questions, stories):
 	outputFileName = createPathIfNonexistent(OUTPUT_PATH + "overall" + os.sep) + "Simplified data.csv"
 	outputFile = open(outputFileName, 'w')
 	try:
-		
 		# header
 		cols = []
-		cols.append("Respondent")
+		cols.append("Participant")
 		cols.append("Number")
 		cols.append("Title")
 		cols.append("Text")
@@ -1229,10 +1246,10 @@ def writeSimplifiedDataToCSV(questions, stories):
 				cols.append(question.shortName)
 		outputFile.write(",".join(cols))
 		outputFile.write("\n")
-		
+		# stories
 		for story in stories:
 			cols = []
-			cols.append(story.respondentPassword)
+			cols.append(story.participantID)
 			cols.append("%s" % (story.number + 1))
 			cols.append('"%s"' % story.title.replace('"', "'")) # quotes INSIDE the title mess things up
 			cols.append('"%s"' % story.text.replace('"', "'")) # quotes INSIDE the text mess things up
@@ -1272,7 +1289,6 @@ def writeSimplifiedDataToCSV(questions, stories):
 								cols.append('"%s"' % answer)
 							else:
 								cols.append("")
-							
 			colString = ",".join(cols)
 			outputFile.write(colString)
 			outputFile.write("\n")
@@ -1280,12 +1296,18 @@ def writeSimplifiedDataToCSV(questions, stories):
 		outputFile.close()
 	print '  done writing data to CSV file.'
 
-def writeStoriesToTextFile(questions, stories):
+def writeStoriesToTextFile(questions, stories, includeMetadata=True):
 	print 'writing stories to TXT file ...'
-	outputFileName = createPathIfNonexistent(OUTPUT_PATH + "overall" + os.sep) + "Stories.txt"
+	outputFileName = createPathIfNonexistent(OUTPUT_PATH + "overall" + os.sep) + "Stories"
+	if includeMetadata:
+		outputFileName += " with metadata"
+	outputFileName += ".txt"
 	text = ''
 	for story in stories:
-		text += story.allDetailsForDisplay(questions)
+		if includeMetadata:
+			text += story.allDetailsForDisplay(questions)
+		else:
+			text += story.prettyTitleAndText() 
 		text += '\n\n'
 	outputFile = open(outputFileName, 'w')
 	try:
@@ -1294,6 +1316,29 @@ def writeStoriesToTextFile(questions, stories):
 		outputFile.close()
 	print '  done writing stories to TXT file.'
 		
+def writeEmptyThemesFile(stories):
+	print 'writing empty themes file ...'
+	# columns in themes file:
+	# 1: story title
+	# 2: text to find in story text if title does not match (use for multiple untitled stories, leave blank otherwise)
+	# 3: first theme for story
+	# 4: second theme
+	# 5: third theme
+	# 6: story text, for reference only, not read back in
+	outputFileName = createPathIfNonexistent(OUTPUT_PATH + "overall" + os.sep) + "themes.csv"
+	textLines = []
+	textLines.append('Title,Text to find if no title match,First theme,Second theme,Third theme,Story text for reference (not read),Comment (not read)')
+	for story in stories:
+		cleanedUpTitle = '"%s"' % story.title.replace('"', "'") # quotes INSIDE the title mess things up
+		cleanedUpText = '"%s"' % story.text.replace('"', "'") # quotes INSIDE the text mess things up
+		textLines.append("%s,,,,,%s" % (cleanedUpTitle, cleanedUpText))
+	text = '\n'.join(textLines)
+	outputFile = open(outputFileName, 'w')
+	try:
+		outputFile.write(text)
+	finally:
+		outputFile.close()
+
 def writeOtherResponsesToQuestions(questions, stories):
 	print 'writing other answers to TXT file ...'
 	outputFileName = createPathIfNonexistent(OUTPUT_PATH + "overall" + os.sep) + "Other responses.txt"
@@ -1324,34 +1369,33 @@ def writeOtherResponsesToQuestions(questions, stories):
 	
 # counts how many stories people told, depending on which answers they gave to questions about themselves
 # if people varied in this it might mean something
-def writeInfoAboutPeopleAndNumberOfStoriesTold(questions, stories, respondents):
+def writeInfoAboutPeopleAndNumberOfStoriesTold(questions, stories, participants):
 	print 'writing number of stories told to CSV file ...'
-	outputFileName = createPathIfNonexistent(OUTPUT_PATH + "overall" + os.sep) + "Number of stories per respondent.csv"
+	outputFileName = createPathIfNonexistent(OUTPUT_PATH + "overall" + os.sep) + "Number of stories per participant.csv"
 	answerStoryCounts = {}
-	for respondent in respondents:
+	for participant in participants:
 		for question in questions:
 			if question.refersTo == "participant":
 				if not answerStoryCounts.has_key(question.shortName):
 					answerStoryCounts[question.shortName] = {}
 				thisDict = answerStoryCounts[question.shortName]
-				answers = respondent.stories[0].gatherAnswersForQuestionID(question.id)
+				answers = participant.stories[0].gatherAnswersForQuestionID(question.id)
 				thisDict[NO_ANSWER] = []
 				if answers:
 					for answer in answers:
 						if not thisDict.has_key(answer):
 							thisDict[answer] = []
-						thisDict[answer].append(len(respondent.stories))
+						thisDict[answer].append(len(participant.stories))
 				else:
-					thisDict[NO_ANSWER].append(len(respondent.stories))
+					thisDict[NO_ANSWER].append(len(participant.stories))
 				if answers:
 					for answer in answers:
 						if thisDict.has_key(answer):
 							thisDict[answer].sort()
 				thisDict[NO_ANSWER].sort()
-	
 	outputFile = open(outputFileName, 'w')
 	try:
-		outputFile.write("Question,Answer,Mean num stories, Num stories (one cell per respondent lowest to highest)\n")
+		outputFile.write("Question,Answer,Mean num stories, Num stories (one cell per participant lowest to highest)\n")
 		for question in questions:
 			if question.refersTo == "participant" and question.shortName.find("other") < 0:
 				if answerStoryCounts.has_key(question.shortName):

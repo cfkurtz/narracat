@@ -244,7 +244,7 @@ def graphPNGScatterGraph(xValues, yValues, xAxisName, yAxisName, graphName, pngF
 	
 	# add stats label at bottom
 	plt.text(0.5, 0.01, 
-			'n=%s, both axes normal=%s, r=%s, p=%s' % (len(xValues), normal, r, rp), 
+			'n=%s, both axes normal=%s, r=%.3f, p=%.3f' % (len(xValues), normal, r, rp), 
 			horizontalalignment='center', transform=figure.transFigure)
 	
 	# add giant r value - uncomment if desired
@@ -366,7 +366,7 @@ def graphChiSquaredContingencyCircleMatrix(xLabels, yLabels, data, graphName, no
 				axes.add_patch(expectedCircle)
 				observedCircle = Circle((xValues[i], flippedYValues[j]), observedSize, edgecolor="#FF0000", facecolor='none', fill=False, linewidth=1)
 				axes.add_patch(observedCircle)
-				plt.text(xValues[i], flippedYValues[j], '%d/%d' % (data[i][j], expectedFrequencies[i][j]), horizontalalignment='center', verticalalignment='center', fontsize=8)
+				plt.text(xValues[i], flippedYValues[j], '%d obs/%d exp' % (data[i][j], expectedFrequencies[i][j]), horizontalalignment='center', verticalalignment='center', fontsize=8)
 		
 	# want the x axis ticks (names) on the top, not the bottom
 	axes.xaxis.set_ticks_position('top')
