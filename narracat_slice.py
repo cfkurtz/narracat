@@ -416,7 +416,7 @@ def graphOneScaleStatsForSlices(questions, stories, columns):
 				if len(storiesInThisSlice):
 					numbersArray = question.gatherScaleValuesFromStories(storiesInThisSlice)
 					npArray = np.array(numbersArray)
-					normal = stats.normaltest(npArray)[1] <= 0.05
+					normal = isNormal(npArray)
 					for graphName in ["Mean", "Skew", "Standard deviation", "Kurtosis"]:
 						if not result.has_key(graphName):
 							 result[graphName] = {}
@@ -476,7 +476,7 @@ def graphOneScaleStatsForSlices(questions, stories, columns):
 			
 def statisticForValues(values, graphName):
 	npArray = np.array(values)
-	normal = stats.normaltest(npArray)[1] <= 0.05
+	normal = isNormal(npArray) 
 	if graphName.find("Mean") >= 0:
 		mean = np.mean(npArray)
 		return round(mean, 2), normal

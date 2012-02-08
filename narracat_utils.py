@@ -54,6 +54,15 @@ def listFromStringRemovingBlankLines(aString):
 			result.append(piece)
 	return result
 
+def removeSpecificListItemsFromList(aList, listOfItemsToRemove):
+	newList = []
+	for item in aList:
+		if item in listOfItemsToRemove:
+			pass
+		else:
+			newList.append(item)
+	return newList
+
 def textOrDefaultIfBlank(text, aDefault):
 	if len(text) > 0:
 		return text

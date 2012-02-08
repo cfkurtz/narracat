@@ -143,6 +143,8 @@ STABILITY_QUESTION_NAME = "Predictability: none to much"
 STABILITY_QUESTION_VALUE_IS_REVERSED = True
 # sometimes a slider is reversed in the asking, to make responses less automatic; 
 # you can re-reverse them here for clarity when comparing answers
+# when you do this, IF the slider covers multiple rows in your data file,
+# you must reverse the column definitions in the format file to match the reversal
 SLIDERS_TO_REVERSE = [
 					"Remember: trivial to never forget", 
 					"Behaviour: despicable to admirable",
@@ -164,10 +166,10 @@ SLICES.append(ALL_DATA_SLICE)
 DATA_HAS_TERNARY_SETS = False
 TERNARY_VALUE_DELIMITER = '"'
 
-# added merged answers column to data format file in January 2011 
+# added lumped (merged) answers column to data format file in January 2011 
 # this is for backward compatibility with earlier format files - will normally be True
-FORMAT_FILE_HAS_MERGE_COLUMN = True
-USE_MERGED_ANSWERS = True
+FORMAT_FILE_HAS_ANSWERS_LUMPING_COLUMN = True
+USE_LUMPED_ANSWERS = True # you can use this to temporarily turn off lumping when you need it off
 
 # -----------------------------------------------------------------------------------------------------------------
 # how things look in the output
@@ -176,7 +178,7 @@ USE_MERGED_ANSWERS = True
 # setting limits to what graphs are generated
 # this is for two reasons: to deal with small data sets (in which there may be very weak trends)
 # and to reduce huge numbers of output files produced
-# to see how these impact the particular texts, search for them in the other code files
+# to see how these impact the particular tests, search for them in the other code files
 LOWER_LIMIT_STORY_NUMBER_FOR_COMPARISONS = 20
 SIGNIFICANCE_VALUE_REPORTING_THRESHOLD = 0.05
 T_TEST_VALUE_REPORTING_THRESHOLD = 1.0
@@ -184,8 +186,15 @@ SKEW_DIFFERENCE_REPORTING_THRESHOLD = 1.0
 CORRELATION_COEFF_REPORTING_THRESHOLD = 0.2
 CONTINGENCY_PERCENTAGE_THRESHOLD = 0
 INCLUDE_PERCENTAGES_IN_CONTINGENCY_DIAGRAMS = False
+
+
+# if true, draws "companion" histograms for different-meaned subsets of data
+# so you don't have to go looking for them
 DRAW_COMPARISON_HISTOGRAMS_FOR_SIGNIFICANT_T_TESTS = True
 DRAW_COMPARISON_HISTOGRAMS_FOR_SKEW_DIFFERENCES = True
+
+# some choices should be excluded from choice comparisons because they are too small
+EXCLUDE_FROM_CHI_SQUARED_TESTS = ["not sure"]
 
 # how to draw slider data
 NUM_HISTOGRAM_BINS = 10

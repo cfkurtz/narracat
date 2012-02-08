@@ -21,6 +21,7 @@ from narracat_network import *
 from narracat_merge import *
 from narracat_ternary import *
 from narracat_cluster import *
+from narracat_testing import *
 
 class NarracatLauncher(Frame):
 
@@ -35,9 +36,11 @@ class NarracatLauncher(Frame):
 		#graphNetworkNodeDiagram(DATA_PATH + "archetypes.csv", "test", "test", OUTPUT_PATH)
 		
 		self.BUTTON_FUNCTION_MAP = [
-			["Overall", "LABEL"],
-			["Data integrity check", self.dataIntegrityCheck],
-			["Data output", self.dataOutput],
+			["Data integrity", "LABEL"],
+			["Print data as read", self.dataIntegrityCheck_Printouts],
+			["Answer summaries", self.dataIntegrityCheck_Values],
+			["Participant summaries", self.dataIntegrityCheck_Participants],
+			["Output stories and metadata", self.dataOutput],
 			["Choices", "LABEL"],
 			["Choice graphs", self.choiceGraphs],
 			["Chi squared tests", self.chiSquaredContingencies],
@@ -98,6 +101,9 @@ class NarracatLauncher(Frame):
 			for option in ternaryOptions:
 				self.BUTTON_FUNCTION_MAP.append(option)
 				
+		self.BUTTON_FUNCTION_MAP.append(["Testing", "LABEL"])
+		self.BUTTON_FUNCTION_MAP.append(["Regression testing", self.testingGraphs])
+				
 		self.BUTTON_FUNCTION_MAP.append(["  ", "LABEL"])
 		
 		self.BUTTON_FUNCTION_MAP_WITHOUT_LABELS = []
@@ -147,6 +153,11 @@ class NarracatLauncher(Frame):
 		self.doOperationsButton["command"] = self.doOperations
 		self.doOperationsButton.pack(side=TOP)
 
+		self.doOperationsButton = Button(operationsFrame)
+		self.doOperationsButton["text"] = "  Uncheck All   "
+		self.doOperationsButton["command"] = self.uncheckAll
+		self.doOperationsButton.pack(side=TOP)
+
 		Label(operationsFrame, text="   ").pack(side=TOP, anchor=W) # spacer so quit button stands out
 		self.quitButton = Button(operationsFrame)
 		self.quitButton["text"] = "  Quit   "
@@ -171,6 +182,10 @@ class NarracatLauncher(Frame):
 			print '\nPERFORMING OPERATION:\n   %s\n' % name
 			function()
 			
+	def uncheckAll(self):
+		for state in self.checkBoxStates:
+			state.set(False)
+			
 	def loadFile(self):
 		forceReread = self.readCSVCheckBoxState.get()
 		if HAS_MULTIPLE_DATA_FILES:
@@ -192,25 +207,35 @@ class NarracatLauncher(Frame):
 
 	# OVERALL
 	
-	def dataIntegrityCheck(self):
+	def dataIntegrityCheck_Printouts(self):
 		if not self.questions and self.participants and self.stories:
 			return
 		printQuestionsToCheckTheyWereReadRight(self.questions)
 		printStoriesToCheckTheyWereReadRight(self.questions, self.stories)
 		printParticipantsToCheckTheyWereReadRight(self.questions, self.participants)
+		printNumberOfResponsesToEachQuestion(self.questions, self.stories)
+		printNumberOfResponsesForEachStory(self.questions, self.stories)
+		print '\n data integrity check (printouts) DONE'
+	
+	def dataIntegrityCheck_Values(self):
+		if not self.questions and self.participants and self.stories:
+			return
 		for slice in SLICES:
 			graphOneGiantHistogramOfAllScaleValues(self.questions, self.stories, slice=slice)
-			graphMeanAndSDAmongScaleValuesPerParticipant(self.questions, self.participants, slice=slice)
 			graphBarChartOfExtremeAndNAProportionsPerScale(self.questions, self.stories, slice=slice)
 			graphBarChartOfNAProportionsPerChoiceQuestion(self.questions, self.stories, slice=slice)
-		if DATA_HAS_TERNARY_SETS:
-			for slice in SLICES:
-				graphOneGiantTernaryPlotOfAllTernarySetValues(self.questions, self.stories, slice=slice)
-				
 		# custom
 		#printResultForSpecificQuestionID(self.questions, self.stories, "Come from")
 		#printNamesOfStoriesWithNoArchetypeData(self.stories, self.questions)
-		print '\n data integrity check DONE'
+		print '\n data integrity check (values) DONE'
+				
+	def dataIntegrityCheck_Participants(self):
+		if not self.questions and self.participants and self.stories:
+			return
+		graphMeanAndSDAmongScaleValuesPerParticipant(self.questions, self.participants)
+		graphAllScaleValuesPerParticipant(self.questions, self.participants) 
+		graphHowManyScaleValuesWereEnteredPerParticipant(self.questions, self.participants) 
+		print '\n data integrity check (participants) DONE'
 				
 	def dataOutput(self):
 		if not self.questions and self.participants and self.stories:
@@ -366,6 +391,8 @@ class NarracatLauncher(Frame):
 		if not DATA_HAS_TERNARY_SETS:
 			print "\n no ternary sets set up in data"
 			return
+		for slice in SLICES:
+			graphOneGiantTernaryPlotOfAllTernarySetValues(self.questions, self.stories, slice=slice)
 		calculateThirdValueStrengthForTernaryAnswers(self.questions, self.stories)
 		graphTernaryPlotValuesPerParticipant(self.questions, self.stories, self.participants)
 		print '\n data integrity check for ternary sets DONE'
@@ -492,4 +519,14 @@ class NarracatLauncher(Frame):
 			return False
 		else:
 			return True
+		
+	# TESTING
 	
+	def testingGraphs(self):
+		# normal, uniform distributions
+		generateAndSaveNormalData()
+		graphHistogramsOfNormalAndUniformTestData()
+		# t tests
+		generateAndSaveTTestData()
+		graphHistogramsAndTTestResultsOfTTestData()
+		print 'testing graphs DONE'

@@ -30,7 +30,8 @@ from matplotlib.collections import PatchCollection
 # graphing methods that write one PNG file
 # -----------------------------------------------------------------------------------------------------------------
 
-def graphPNGHistogramWithStatsMarked(numbersArray, graphName, pngFileName, pngFilePath, slice=ALL_DATA_SLICE):
+def graphPNGHistogramWithStatsMarked(numbersArray, graphName, pngFileName, pngFilePath, slice=ALL_DATA_SLICE, 
+									bins=NUM_HISTOGRAM_BINS, start=SLIDER_START, end=SLIDER_END):
 	
 	if not numbersArray:
 		return
@@ -41,21 +42,23 @@ def graphPNGHistogramWithStatsMarked(numbersArray, graphName, pngFileName, pngFi
 	# calculate basic descriptive stats
 	mean = round(np.mean(npArray), 2)
 	std = round(np.std(npArray), 2)
-	if len(numbersArray) >= 20:
+	if len(numbersArray) >= LOWER_LIMIT_STORY_NUMBER_FOR_COMPARISONS:
 		skewness = round(stats.skew(npArray), 3)
 		kurtosis = round(stats.kurtosis(npArray), 3)
 		normaltestp = round(stats.normaltest(npArray)[1], 3) 
+		bottomNote = 'n = %s mean = %.3f std = %.3f\nskewness = %.3f kurtosis = %.3f normal-test p = %.3f' % (len(numbersArray), mean, std, skewness, kurtosis, normaltestp)
 	else:
 		skewness = "n/a"
 		kurtosis = "n/a"
 		normaltestp = "n/a"
+		bottomNote = 'n = %s mean = %s std = %s\nskewness = %s kurtosis = %s normal-test p = %s' % (len(numbersArray), mean, std, skewness, kurtosis, normaltestp)
 	
 	# create histograms
 	plt.clf()
 	figure = plt.figure()
 	axes = figure.add_subplot(111)
 	
-	(n, bins, rects) = plt.hist(npArray, NUM_HISTOGRAM_BINS)
+	(n, bins, rects) = plt.hist(npArray, bins)
 	
 	minValue = 100000
 	maxValue = 0
@@ -89,10 +92,10 @@ def graphPNGHistogramWithStatsMarked(numbersArray, graphName, pngFileName, pngFi
 	plt.axvline(mean, color='r', linewidth=2)
 	plt.axvspan(mean-std, mean+std, color='y', alpha=0.2)
 	
-	axes.set_xlim(SLIDER_START, SLIDER_END)
+	axes.set_xlim(start, end)
 
 	plt.text(0.5, 0.01, 
-			'n = %s mean = %s std = %s\nskewness = %s kurtosis = %s normal-test p = %s' % (len(numbersArray), mean, std, skewness, kurtosis, normaltestp), 
+			bottomNote, 
 			horizontalalignment='center', transform=figure.transFigure)
 	
 	plt.savefig(pngFilePath + cleanTextForFileName(pngFileName) + ".png", dpi=200)
@@ -295,10 +298,10 @@ def graphCircleMatrix(numRowsCols, labels, sizes, values, pValues, statLabel, co
 				circle = Circle((gridValues[i], flippedGridValues[j]), sizes[i][j], color=colors[i][j])
 				if sizes[i][j] != 0 and values[i][j] != 0:
 					if pValues:
-						plt.text(gridValues[i], flippedGridValues[j]-0.1, "p = %.2f" % pValues[i][j], verticalalignment='top', horizontalalignment='center', fontsize=8)
-						plt.text(gridValues[i], flippedGridValues[j]+0.1, "%s = %.2f" % (statLabel, values[i][j]), verticalalignment='bottom', horizontalalignment='center', fontsize=8)
+						plt.text(gridValues[i], flippedGridValues[j]-0.1, "p = %.3f" % pValues[i][j], verticalalignment='top', horizontalalignment='center', fontsize=8)
+						plt.text(gridValues[i], flippedGridValues[j]+0.1, "%s = %.3f" % (statLabel, values[i][j]), verticalalignment='bottom', horizontalalignment='center', fontsize=8)
 					else:
-						plt.text(gridValues[i], flippedGridValues[j]+0.1, "%.2f" % (values[i][j]), verticalalignment='center', horizontalalignment='center', fontsize=8)
+						plt.text(gridValues[i], flippedGridValues[j]+0.1, "%.3f" % (values[i][j]), verticalalignment='center', horizontalalignment='center', fontsize=8)
 			axes.add_patch(circle)
 	
 	# want the x axis ticks (names) on the top, not the bottom
@@ -333,9 +336,9 @@ def graphCircleMatrix(numRowsCols, labels, sizes, values, pValues, statLabel, co
 def graphChiSquaredContingencyCircleMatrix(xLabels, yLabels, data, graphName, note, pngFileName, pngFilePath, slice=ALL_DATA_SLICE):
 	chiSquaredValue, chiSquaredPValue, degreesOfFreedom, expectedFrequencies = chiSquaredExpectedContingencyTable(data)
 	if not chiSquaredPValue:
-		return
+		return chiSquaredValue, chiSquaredPValue
 	if chiSquaredPValue > SIGNIFICANCE_VALUE_REPORTING_THRESHOLD:
-		return
+		return chiSquaredValue, chiSquaredPValue
 	
 	print '  printing graph: %s' % graphName
 
@@ -397,6 +400,8 @@ def graphChiSquaredContingencyCircleMatrix(xLabels, yLabels, data, graphName, no
 	
 	plt.savefig(pngFilePath + cleanTextForFileName(pngFileName) + ".png", dpi=200)
 	plt.close(figure)
+	
+	return chiSquaredValue, chiSquaredPValue
 	
 def graphContingencyCircleMatrix(xLabels, yLabels, data, graphName, note, pngFileName, pngFilePath, slice=ALL_DATA_SLICE):
 	xValues, flippedYValues, longestXLabel, longestYLabel, flippedYLabels = setUpContingencyLabelsAndTableValues(xLabels, yLabels)
@@ -482,18 +487,19 @@ def graphContingencyCircleMatrix(xLabels, yLabels, data, graphName, note, pngFil
 						circleColor = "#FFE4B5"
 						textColor = "#919191"
 					
-					circle = Circle((xValues[i], flippedYValues[j]), size, color=circleColor, fill=True, linewidth=1)
-					axes.add_patch(circle)
-				
-					if not INCLUDE_PERCENTAGES_IN_CONTINGENCY_DIAGRAMS:
-						plt.text(xValues[i], flippedYValues[j], '%s' % dataPoint, horizontalalignment='center', verticalalignment='center', fontsize=8)
-					else:
+					if i != 0 and j != 0:
+						circle = Circle((xValues[i], flippedYValues[j]), size, color=circleColor, fill=True, linewidth=1)
+						axes.add_patch(circle)
+
+					if INCLUDE_PERCENTAGES_IN_CONTINGENCY_DIAGRAMS:
 						if j == 0:
 							plt.text(xValues[i], flippedYValues[j], '%s' % dataPoint, horizontalalignment='center', verticalalignment='center', fontsize=8)
 						elif i == 0:
 							plt.text(xValues[i], flippedYValues[j], '%s/%s%%' % (dataPoint,percentage), color=textColor, horizontalalignment='center', verticalalignment='center', fontsize=8)
 						else:
 							plt.text(xValues[i], flippedYValues[j], '%s%%' % percentage, color=textColor, horizontalalignment='center', verticalalignment='center', fontsize=8)
+					else:
+						plt.text(xValues[i], flippedYValues[j], '%s' % dataPoint, horizontalalignment='center', verticalalignment='center', fontsize=8)
 		
 		# want the x axis ticks (names) on the top, not the bottom
 		axes.xaxis.set_ticks_position('top')

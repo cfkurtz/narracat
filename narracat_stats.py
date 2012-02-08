@@ -17,13 +17,16 @@ import numpy as np
 import scipy
 import scipy.stats as stats
 
+def isNormal(npArray):
+	return stats.normaltest(npArray)[1] >= 0.05
+ 
 def correlationStatsForTwoScales(xValues, yValues, roundValues=True):
 	npArrayX = np.array(xValues)
 	npArrayY = np.array(yValues)
 	
 	# http://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.normaltest.html#scipy.stats.normaltest
-	xIsNormal = stats.normaltest(npArrayX)[1] < 0.05
-	yIsNormal = stats.normaltest(npArrayY)[1] < 0.05
+	xIsNormal = isNormal(npArrayX)
+	yIsNormal = isNormal(npArrayY) 
 	
 	if xIsNormal and yIsNormal:
 		# http://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.pearsonr.html#scipy.stats.pearsonr
@@ -49,14 +52,14 @@ def ttestForTwoChoiceQuestions(xValues, yValues):
 	npArrayY = np.array(yValues)
 	
 	# http://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.normaltest.html#scipy.stats.normaltest
-	xIsNormal = stats.normaltest(npArrayX)[1] < 0.05 
-	yIsNormal = stats.normaltest(npArrayY)[1] < 0.05
+	xIsNormal = isNormal(npArrayX)
+	yIsNormal = isNormal(npArrayY) 
 	
 	if xIsNormal and yIsNormal:
 		# Levene test for equal variances
 		# http://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.levene.html#scipy.stats.levene
 		l, lp = stats.levene(npArrayX, npArrayY)
-		parametric = xIsNormal and yIsNormal and lp < 0.05
+		parametric = xIsNormal and yIsNormal and lp >- 0.05
 	else:
 		parametric = False
 	

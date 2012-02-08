@@ -17,13 +17,9 @@ from narracat_graph import *
 # -----------------------------------------------------------------------------------------------------------------
 
 # whether people varied too little in their responses
-def graphMeanAndSDAmongScaleValuesPerParticipant(questions, participants, slice=ALL_DATA_SLICE):
-	print 'writing within-participant means and std devs ... (%s)' % slice
-	overallPath = createPathIfNonexistent(OUTPUT_PATH + "overall" + os.sep)
-	if DATA_HAS_SLICES:
-		overallPathWithSlice = createPathIfNonexistent(overallPath + slice + os.sep)
-	else:
-		overallPathWithSlice = overallPath
+def graphMeanAndSDAmongScaleValuesPerParticipant(questions, participants):
+	print 'writing within-participant means and std devs ...'
+	participantsPath = createPathIfNonexistent(OUTPUT_PATH + "participants" + os.sep)
 	means = []
 	stdevs = []
 	for participant in participants:
@@ -32,9 +28,44 @@ def graphMeanAndSDAmongScaleValuesPerParticipant(questions, participants, slice=
 			means.append(mean)
 		if stdev:
 			stdevs.append(stdev)
-	graphPNGHistogramWithStatsMarked(means, 'Means of scale values within participants', 'Means within participants', overallPathWithSlice, slice=slice)
-	graphPNGHistogramWithStatsMarked(stdevs, 'Std dev in scale values within participants', 'SD within participants', overallPathWithSlice, slice=slice)
+	graphPNGHistogramWithStatsMarked(means, 'Means of scale values within participants', 'Means within participants', participantsPath, slice=slice)
+	graphPNGHistogramWithStatsMarked(stdevs, 'Std dev in scale values within participants', 'SD within participants', participantsPath, slice=slice)
 	print '  done writing within-participant means and std devs. (%s)' % slice
+
+def graphAllScaleValuesPerParticipant(questions, participants):
+	print 'writing within-participant scalar value distributions ...'
+	participantsPath = createPathIfNonexistent(OUTPUT_PATH + "participants" + os.sep)
+	for participant in participants:
+		valuesForParticipant = []
+		for question in questions:
+			if question.isScale():
+				for story in participant.stories:
+					values = story.gatherAnswersForQuestionID(question.id)
+					if values:
+						for value in values:
+							if value and value != DOES_NOT_APPLY:
+								valuesForParticipant.append(int(value))
+		if len(valuesForParticipant) > 2:
+			graphPNGHistogramWithStatsMarked(valuesForParticipant, "All scale values for participant " + participant.id, participant.id, participantsPath)
+
+def graphHowManyScaleValuesWereEnteredPerParticipant(questions, participants):
+	print 'writing per-participant scalar value counts ...'
+	participantsPath = createPathIfNonexistent(OUTPUT_PATH + "participants" + os.sep)
+	numValuesPerParticipant = []
+	scaleQuestions = gatherScaleQuestions(questions)
+	for participant in participants:
+		numValues = 0
+		for story in participant.stories:
+			for question in scaleQuestions:
+				values = story.gatherAnswersForQuestionID(question.id)
+				if values:
+					for value in values:
+						if value and value != DOES_NOT_APPLY:
+							numValues += 1
+		numValuesPerParticipant.append(numValues)
+	name = "Number of scale values per participant"
+	# may need to change start, end and number of histogram bins to fit max number of scale answers collected
+	graphPNGHistogramWithStatsMarked(numValuesPerParticipant, name, name, participantsPath, bins=10, start=0, end=20)
 
 # how many stories have a N/A value for each scale (or don't have any value at all)
 # how many stories have extreme high or low values for each scale
@@ -87,7 +118,7 @@ def graphBarChartOfExtremeAndNAProportionsPerScale(questions, stories, slice=ALL
 		labels = []
 		for question in ternaryQuestions:
 			numberOfNAs = question.gatherNumberOfNAsIfTernarySet(stories, slice=slice)
-			labels.append(question.veryShortName())
+			labels.append(question.shortName)
 			if numberOfNAs is not None:
 				data.append(numberOfNAs)
 			else:
@@ -171,13 +202,13 @@ def graphScaleHistogramsPerQuestionAnswer(questions, stories, slice=ALL_DATA_SLI
 				for scaleQuestion in scaleQuestions:
 					numbersArray = scaleQuestion.gatherScaleValuesFromStories(storiesWithThisAnswer)
 					if numbersArray and len(numbersArray) >= lowerLimitStoryNumber:
-						name = "%s with %s - %s" % (scaleQuestion.veryShortName(), choiceQuestion.shortName, answer)
+						name = "%s with %s - %s" % (scaleQuestion.shortName, choiceQuestion.shortName, answer)
 						startPath = createPathIfNonexistent(OUTPUT_PATH + "scale histograms" + os.sep)
 						if DATA_HAS_SLICES:
 							startPathWithSlice = createPathIfNonexistent(startPath + slice + os.sep)
 						else:
 							startPathWithSlice = startPath
-						path = createPathIfNonexistent(startPathWithSlice + cleanTextForFileName(scaleQuestion.veryShortName()) + os.sep)
+						path = createPathIfNonexistent(startPathWithSlice + cleanTextForFileName(scaleQuestion.shortName) + os.sep)
 						graphPNGHistogramWithStatsMarked(numbersArray, name, name, path, slice=slice)
 						graphsWritten += 1
 						if graphsWritten % 20 == 0:
@@ -192,13 +223,13 @@ def graphScaleHistogramsPerQuestionAnswer(questions, stories, slice=ALL_DATA_SLI
 			for scaleQuestion in scaleQuestions:
 				numbersArray = scaleQuestion.gatherScaleValuesFromStories(storiesWithNoAnswer)
 				if numbersArray and len(numbersArray) >= lowerLimitStoryNumber:
-					name = "%s with %s - %s" % (scaleQuestion.veryShortName(), choiceQuestion.shortName, 'No answer')
+					name = "%s with %s - %s" % (scaleQuestion.shortName, choiceQuestion.shortName, 'No answer')
 					startPath = createPathIfNonexistent(OUTPUT_PATH + "scale histograms" + os.sep)
 					if DATA_HAS_SLICES:
 						startPathWithValue = createPathIfNonexistent(startPath + slice + os.sep)
 					else:
 						startPathWithValue = startPath
-					path = createPathIfNonexistent(startPathWithValue + cleanTextForFileName(scaleQuestion.veryShortName()) + os.sep)
+					path = createPathIfNonexistent(startPathWithValue + cleanTextForFileName(scaleQuestion.shortName) + os.sep)
 					graphPNGHistogramWithStatsMarked(numbersArray, name, name, path, slice=slice)
 					graphsWritten += 1
 					if graphsWritten % 20 == 0:
@@ -213,13 +244,13 @@ def graphScaleHistogramsPerQuestionAnswer(questions, stories, slice=ALL_DATA_SLI
 			for scaleQuestion in scaleQuestions:
 				numbersArray = scaleQuestion.gatherScaleValuesFromStories(storiesWithAnyAnswer)
 				if numbersArray and len(numbersArray) >= lowerLimitStoryNumber:
-					name = "%s with %s - %s" % (scaleQuestion.veryShortName(), choiceQuestion.shortName, 'Any answer')
+					name = "%s with %s - %s" % (scaleQuestion.shortName, choiceQuestion.shortName, 'Any answer')
 					startPath = createPathIfNonexistent(OUTPUT_PATH + "scale histograms" + os.sep)
 					if DATA_HAS_SLICES:
 						startPathWithSlice = createPathIfNonexistent(startPath + slice + os.sep)
 					else:
 						startPathWithSlice = startPath
-					path = createPathIfNonexistent(startPathWithSlice + cleanTextForFileName(scaleQuestion.veryShortName()) + os.sep)
+					path = createPathIfNonexistent(startPathWithSlice + cleanTextForFileName(scaleQuestion.shortName) + os.sep)
 					graphPNGHistogramWithStatsMarked(numbersArray, name, name, path, slice=slice)
 					graphsWritten += 1
 					if graphsWritten % 20 == 0:
@@ -323,6 +354,7 @@ def graphAnswerContingencies(questions, stories, chiSquared=False, slice=ALL_DAT
 	labelsAndData = []
 	
 	numGraphsWritten = 0
+	collectedResultsForChiSquaredCSVReport = []
 	choiceQuestions = gatherChoiceQuestions(questions)
 	for i in range(len(choiceQuestions)):
 		for j in range(len(choiceQuestions)):
@@ -331,7 +363,6 @@ def graphAnswerContingencies(questions, stories, chiSquared=False, slice=ALL_DAT
 				secondQuestion = choiceQuestions[j]
 				data = []
 				colors = []
-				maxValue = 0
 				firstAnswersToCheck = []
 				if not chiSquared:
 					firstAnswersToCheck.append(ALL_ANSWERS)
@@ -339,6 +370,8 @@ def graphAnswerContingencies(questions, stories, chiSquared=False, slice=ALL_DAT
 				if not chiSquared:
 					firstAnswersToCheck.append(NO_ANSWER)
 				firstAnswersToCheck = removeDuplicates(firstAnswersToCheck) # because of extra answers in survey
+				if chiSquared:
+					firstAnswersToCheck = removeSpecificListItemsFromList(firstAnswersToCheck, EXCLUDE_FROM_CHI_SQUARED_TESTS)
 				for firstAnswer in firstAnswersToCheck:
 					data.append([])
 					colors.append([])
@@ -349,6 +382,8 @@ def graphAnswerContingencies(questions, stories, chiSquared=False, slice=ALL_DAT
 					if not chiSquared:
 						secondAnswersToCheck.append(NO_ANSWER)
 					secondAnswersToCheck = removeDuplicates(secondAnswersToCheck) # because of extra answers in survey
+					if chiSquared:
+						secondAnswersToCheck = removeSpecificListItemsFromList(secondAnswersToCheck, EXCLUDE_FROM_CHI_SQUARED_TESTS)
 					for secondAnswer in secondAnswersToCheck:
 						numStoriesForThisCombination = 0
 						for story in stories:
@@ -356,24 +391,54 @@ def graphAnswerContingencies(questions, stories, chiSquared=False, slice=ALL_DAT
 								if story.hasBothOfTwoQuestionAnswerTuples((firstQuestion, firstAnswer), (secondQuestion, secondAnswer)):
 									numStoriesForThisCombination += 1
 						value = numStoriesForThisCombination
-						if value > maxValue:
-							maxValue = value
 						data[-1].append(value) 
 						colors[-1].append("#FF0000")
-				if firstQuestion.shortName != secondQuestion.shortName or firstQuestion.type == TYPE_MULTI_CHOICE:
+				if 1: #firstQuestion.shortName != secondQuestion.shortName or firstQuestion.type == TYPE_MULTI_CHOICE:
 					graphName = "%s X %s" % (firstQuestion.shortName, secondQuestion.shortName)
 					note = ""#"Size of circle is number of stories\nwith both answers in common."
 					xLabels = firstAnswersToCheck
 					yLabels = secondAnswersToCheck
 					if chiSquared:
-						graphChiSquaredContingencyCircleMatrix(xLabels, yLabels, data, 
+						smallestCellValue = 10000
+						for k in range(len(data)):
+							for l in range(len(data[k])):
+								if abs(data[k][l]) < smallestCellValue:
+									smallestCellValue = abs(data[k][l])
+						chiSquaredValue, chiSquaredPValue = graphChiSquaredContingencyCircleMatrix(xLabels, yLabels, data, 
 												graphName, note, graphName, contingenciesPathWithSlice, slice=slice)
+						collectedResultsForChiSquaredCSVReport.append((firstQuestion.shortName, secondQuestion.shortName, 
+												chiSquaredValue, chiSquaredPValue, smallestCellValue))
 					else:
 						graphContingencyCircleMatrix(xLabels, yLabels, data, 
 												graphName, note, graphName, contingenciesPathWithSlice, slice=slice)
 					numGraphsWritten += 1
 					if numGraphsWritten % 10 == 0:
 						print '  ... %s combinations considered' % numGraphsWritten
+	outputFileName = contingenciesPathWithSlice + "Chi-squared test results.csv"
+	outputFile = open(outputFileName, 'w')
+	try:
+		# leave space for "first question" entry
+		outputFile.write(",")
+		# write line of "second question" names across the top (these are repeated over and over, so just use question list instead)
+		for question in choiceQuestions:
+			outputFile.write(question.shortName + ",")
+		# for each result, write it in the cells in order
+		# when a new "first question" is considered, add a carriage return
+		lastFirstQuestion = None
+		for line in collectedResultsForChiSquaredCSVReport:
+			if line[0] != lastFirstQuestion:
+				outputFile.write("\n%s," % line[0])
+				lastFirstQuestion = line[0]
+			if line[4] >= 5:
+				if line[3] <= SIGNIFICANCE_VALUE_REPORTING_THRESHOLD:
+					outputFile.write("p=%.3f c=%.3f n=%s," %(line[3], line[2], line[4]))
+				else:
+					outputFile.write('NS,')
+			else:
+				outputFile.write(",")
+		outputFile.write("\n")
+	finally:
+		outputFile.close()
 	print '  done writing answer contingencies. (%s)' % slice
 	
 # -----------------------------------------------------------------------------------------------------------------
@@ -405,7 +470,7 @@ def doTTestsToCompareScaleValuesWithQuestionAnswers(questions, stories, slice=AL
 								storiesWithThisAnswer.append(story)
 					if len(storiesWithThisAnswer) >= lowerLimitStoryNumber:
 						scaleValues = scaleQuestion.gatherScaleValuesFromStories(storiesWithThisAnswer)
-						if len(scaleValues) > lowerLimitStoryNumber:
+						if len(scaleValues) >= lowerLimitStoryNumber:
 							answerValuesForThisQuestion[answer] = scaleValues
 				results = []
 				i = 0
@@ -458,8 +523,8 @@ def doTTestsToCompareScaleValuesWithQuestionAnswers(questions, stories, slice=AL
 						ttestsPath = createPathIfNonexistent(byQuestionPath + cleanTextForFileName(choiceQuestion.shortName) + os.sep)
 					else:
 						byScalePath = createPathIfNonexistent(ttestsStartPathWithSlice + "by scale" + os.sep)
-						ttestsPath = createPathIfNonexistent(byScalePath + cleanTextForFileName(scaleQuestion.veryShortName()) + os.sep)
-					graphName = "T tests - %s with %s" % (scaleQuestion.veryShortName(), choiceQuestion.shortName)
+						ttestsPath = createPathIfNonexistent(byScalePath + cleanTextForFileName(scaleQuestion.shortName) + os.sep)
+					graphName = "T tests - %s with %s" % (scaleQuestion.shortName, choiceQuestion.shortName)
 					note = ""#"Size of circle is degree of difference between means; bright is normal, pale is non-normal or unequal variance."
 					if len(labels) > 1:
 						graphCircleMatrix(len(labels), labels, sizes, values, pValues, 't', colors, 
@@ -473,7 +538,7 @@ def doTTestsToCompareScaleValuesWithQuestionAnswers(questions, stories, slice=AL
 										storiesWithThisAnswer.append(story)
 							numbersArray = scaleQuestion.gatherScaleValuesFromStories(storiesWithThisAnswer)
 							if numbersArray and len(numbersArray) >= lowerLimitStoryNumber:
-								name = "%s with %s - %s" % (scaleQuestion.veryShortName(), choiceQuestion.shortName, answer)
+								name = "%s with %s - %s" % (scaleQuestion.shortName, choiceQuestion.shortName, answer)
 								graphPNGHistogramWithStatsMarked(numbersArray, name, name, ttestsPath, slice=slice)
 	print '  done writing answer combination t tests. (%s)' % slice
 	
@@ -561,8 +626,8 @@ def compareSkewInScaleValuesWithQuestionAnswers(questions, stories, slice=ALL_DA
 						ttestsPath = createPathIfNonexistent(byQuestionPath + cleanTextForFileName(choiceQuestion.shortName) + os.sep)
 					else:
 						byScalePath = createPathIfNonexistent(ttestsStartPathWithSlice + "by scale" + os.sep)
-						ttestsPath = createPathIfNonexistent(byScalePath + cleanTextForFileName(scaleQuestion.veryShortName()) + os.sep)
-					graphName = "Skew diffs - %s with %s" % (scaleQuestion.veryShortName(), choiceQuestion.shortName)
+						ttestsPath = createPathIfNonexistent(byScalePath + cleanTextForFileName(scaleQuestion.shortName) + os.sep)
+					graphName = "Skew diffs - %s with %s" % (scaleQuestion.shortName, choiceQuestion.shortName)
 					note = ""#"Size of circle is degree of difference between means; bright is normal, pale is non-normal or unequal variance."
 					if len(labels) > 1:
 						graphCircleMatrix(len(labels), labels, sizes, values, None, None, colors, 
@@ -576,7 +641,7 @@ def compareSkewInScaleValuesWithQuestionAnswers(questions, stories, slice=ALL_DA
 										storiesWithThisAnswer.append(story)
 							numbersArray = scaleQuestion.gatherScaleValuesFromStories(storiesWithThisAnswer)
 							if numbersArray and len(numbersArray) >= lowerLimitStoryNumber:
-								name = "%s with %s - %s" % (scaleQuestion.veryShortName(), choiceQuestion.shortName, answer)
+								name = "%s with %s - %s" % (scaleQuestion.shortName, choiceQuestion.shortName, answer)
 								graphPNGHistogramWithStatsMarked(numbersArray, name, name, ttestsPath, slice=slice)
 	print '  done writing answer combination skew comparisons. (%s)' % slice
 	
@@ -625,7 +690,7 @@ def graphScaleScattergramsOrCorrelationMatrix(questions, stories, extraName=None
 			pValues.append([])
 			colors.append([])
 		for j in range(len(scaleQuestions)):
-			if i < j or drawMatrix:
+			if 1: #i < j or drawMatrix:
 				xValues = []
 				yValues = []
 				for story in stories:
@@ -660,7 +725,7 @@ def graphScaleScattergramsOrCorrelationMatrix(questions, stories, extraName=None
 						else:
 							comboPath = scatterPathWithSlice
 						if extraName:
-							combinedName = "%s - %s" % (combinedName, extraName)
+							combinedName = "%s\n%s" % (combinedName, extraName)
 						graphPNGScatterGraph(xValues, yValues, scaleQuestions[i].shortName, scaleQuestions[j].shortName, 
 											combinedName, combinedName, comboPath, slice=slice)
 						graphsWritten += 1
@@ -776,8 +841,8 @@ def writeCorrelationsToCSVForQuestionAnswers(questions, stories, slice=ALL_DATA_
 									value = 100
 									pValue = 100
 								csvOutput.write('%s x %s x %s,%s,%s,%s,%s,%s\n' % (
-																	scaleQuestions[i].veryShortName(), 
-																	scaleQuestions[j].veryShortName(), 
+																	scaleQuestions[i].shortName, 
+																	scaleQuestions[j].shortName, 
 																	choiceQuestion.shortName,
 																	choiceQuestion.shortName,
 																	answer, pValue, value, len(xValues)))
@@ -804,7 +869,8 @@ def graphScaleContourGraphsAgainstStability(questions, stories, stabilityQuestio
 	if stabilityQuestion:
 		for i in range(len(scaleQuestions)):
 			for j in range(len(scaleQuestions)):
-				if i < j and scaleQuestions[i].shortName != stabilityQuestionName and scaleQuestions[j].shortName != stabilityQuestionName:
+				#if i < j and scaleQuestions[i].shortName != stabilityQuestionName and scaleQuestions[j].shortName != stabilityQuestionName:
+				if scaleQuestions[i].shortName != stabilityQuestionName and scaleQuestions[j].shortName != stabilityQuestionName:
 					xArray = []
 					yArray = []
 					zArray = []
@@ -825,7 +891,7 @@ def graphScaleContourGraphsAgainstStability(questions, stories, stabilityQuestio
 						else:
 							comboPath = landscapesPathWithSlice
 						if extraName:
-							combinedName = "%s - %s" % (combinedName, extraName)
+							combinedName = "%s\n%s" % (combinedName, extraName)
 						graphPNGContourF(xArray, yArray, zArray, 
 										scaleQuestions[i].shortName, scaleQuestions[j].shortName, 
 										combinedName, combinedName, comboPath, levels=100, slice=slice)
@@ -918,7 +984,7 @@ def printScaleMeansPerQuestionAnswer(questions, stories, slice=ALL_DATA_SLICE, w
 					if numbersArray:
 						npArray = np.array(numbersArray)
 						mean = np.mean(npArray)
-						print "%s\t%s\t%s\t%s\t%s" % (scaleQuestion.veryShortName(), choiceQuestion.shortName, answer, mean, len(numbersArray))
+						print "%s\t%s\t%s\t%s\t%s" % (scaleQuestion.shortName, choiceQuestion.shortName, answer, mean, len(numbersArray))
 		# stories with no answer
 		storiesWithNoAnswer = []
 		for story in stories:
@@ -931,7 +997,7 @@ def printScaleMeansPerQuestionAnswer(questions, stories, slice=ALL_DATA_SLICE, w
 				if numbersArray:
 					npArray = np.array(numbersArray)
 					mean = np.mean(npArray)
-					print "%s\t%s\t%s\t%s\t%s" % (scaleQuestion.veryShortName(), choiceQuestion.shortName, "No answer", mean, len(numbersArray))
+					print "%s\t%s\t%s\t%s\t%s" % (scaleQuestion.shortName, choiceQuestion.shortName, "No answer", mean, len(numbersArray))
 		# stories with any answer
 		storiesWithAnyAnswer = []
 		for story in stories:
@@ -944,7 +1010,7 @@ def printScaleMeansPerQuestionAnswer(questions, stories, slice=ALL_DATA_SLICE, w
 				if numbersArray:
 					npArray = np.array(numbersArray)
 					mean = np.mean(npArray)
-					print "%s\t%s\t%s\t%s\t%s" % (scaleQuestion.veryShortName(), choiceQuestion.shortName, "Any answer", mean, len(numbersArray))
+					print "%s\t%s\t%s\t%s\t%s" % (scaleQuestion.shortName, choiceQuestion.shortName, "Any answer", mean, len(numbersArray))
 	print '  done writing scale means by answer. (%s)' % slice
 	
 

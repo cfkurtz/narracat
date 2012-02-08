@@ -41,12 +41,12 @@ class ColumnDefinition():
 			self.codes = listFromStringRemovingBlankLines(row[5])
 			self.longResponseNames = listFromStringRemovingBlankLines(row[6])
 			self.shortResponseNames = listFromStringRemovingBlankLines(row[7])
-			if FORMAT_FILE_HAS_MERGE_COLUMN and USE_MERGED_ANSWERS:
-				mergedShortResponseNames = listFromStringRemovingBlankLines(row[8])
+			if FORMAT_FILE_HAS_ANSWERS_LUMPING_COLUMN and USE_LUMPED_ANSWERS:
+				lumpedShortResponseNames = listFromStringRemovingBlankLines(row[8])
 				self.shortResponseNames = []
-				self.shortResponseNames.extend(mergedShortResponseNames)				
+				self.shortResponseNames.extend(lumpedShortResponseNames)				
 			# type of question
-			if FORMAT_FILE_HAS_MERGE_COLUMN:
+			if FORMAT_FILE_HAS_ANSWERS_LUMPING_COLUMN:
 				self.type = row[9]
 			else: # this is for backward compatibility, added merge column in January 2011
 				self.type = row[8]
@@ -56,7 +56,7 @@ class ColumnDefinition():
 					self.appliesToStoryNumber = 0 
 				else:
 					if FORMAT_FILE_HAS_STORY_NUMBER_COLUMN:
-						if FORMAT_FILE_HAS_MERGE_COLUMN:
+						if FORMAT_FILE_HAS_ANSWERS_LUMPING_COLUMN:
 							storyNumberText = row[10]
 						else:
 							storyNumberText = row[9]
@@ -1184,6 +1184,32 @@ def printParticipantsToCheckTheyWereReadRight(questions, participants, extraComm
 		print '    participant with id', participant.id, 'told', len(participant.stories), 'stories'
 	print '---------------------------------------------------------'
 	
+def printNumberOfResponsesToEachQuestion(questions, stories):
+	print '---------------------------------------------------------'
+	print 'responses per question'
+	print '---------------------------------------------------------'
+	for question in questions:
+		numAnswersToThisQuestion = 0
+		for story in stories:
+			answers = story.gatherAnswersForQuestionID(question.id)
+			if answers:
+				numAnswersToThisQuestion += len(answers)
+		print '%s: %s' % (question.shortName, numAnswersToThisQuestion)
+	print '---------------------------------------------------------'
+	
+def printNumberOfResponsesForEachStory(questions, stories):
+	print '---------------------------------------------------------'
+	print 'responses per story'
+	print '---------------------------------------------------------'
+	for story in stories:
+		numAnswersForThisStory = 0
+		for question in questions:
+			answers = story.gatherAnswersForQuestionID(question.id)
+			if answers:
+				numAnswersForThisStory += len(answers)
+		print '%s: %s' % (story.title, numAnswersForThisStory)
+	print '---------------------------------------------------------'
+	
 def printResultForSpecificQuestionID(questions, stories, questionID):
 	numAnswers = 0
 	for story in stories:
@@ -1400,7 +1426,11 @@ def writeInfoAboutPeopleAndNumberOfStoriesTold(questions, stories, participants)
 			if question.refersTo == "participant" and question.shortName.find("other") < 0:
 				if answerStoryCounts.has_key(question.shortName):
 					questionDict = answerStoryCounts[question.shortName]
-					for answer in question.shortResponseNames:
+					# make a copy of the answer names to remove duplicates created by lumping answers together in format file
+					possibleAnswers = []
+					possibleAnswers.extend(question.shortResponseNames)
+					possibleAnswers = removeDuplicates(possibleAnswers)
+					for answer in possibleAnswers:
 						if questionDict.has_key(answer):
 							outputFile.write("%s,%s," % (question.shortName, answer))
 							if len(questionDict[answer]) == 0:
