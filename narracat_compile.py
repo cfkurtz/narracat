@@ -17,7 +17,7 @@ from narracat_graph import *
 # -----------------------------------------------------------------------------------------------------------------
 
 # whether people varied too little in their responses
-def graphMeanAndSDAmongScaleValuesPerParticipant(questions, participants):
+def graphMeanAndSDAmongScaleValuesPerParticipant(questions, participants, slice=ALL_DATA_SLICE):
 	print 'writing within-participant means and std devs ...'
 	participantsPath = createPathIfNonexistent(OUTPUT_PATH + "participants" + os.sep)
 	means = []
