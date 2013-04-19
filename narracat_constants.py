@@ -10,7 +10,7 @@
 # Common constants
 # -----------------------------------------------------------------------------------------------------------------
 
-import os, sys
+import os, sys, matplotlib
 
 # specify base path in command-line argument, or leave blank to use path where script is located
 
@@ -31,6 +31,7 @@ if len(sys.argv) > 1:
 else:
 	BASE_PATH = os.path.dirname(sys.argv[0])
 print 'Starting narracat with Base Path"', BASE_PATH, '"'
+print 'matplotlib version', matplotlib.__version__
 
 DATA_PATH = BASE_PATH + os.sep + "data" + os.sep
 if not os.path.exists(DATA_PATH):

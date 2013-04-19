@@ -23,6 +23,8 @@ from narracat_ternary import *
 from narracat_cluster import *
 from narracat_testing import *
 
+import numpy as np
+
 class NarracatLauncher(Frame):
 
 	def __init__(self, master=None, questions=None, participants=None, stories=None):
@@ -35,6 +37,13 @@ class NarracatLauncher(Frame):
 		#mergeDataFiles_2()
 		#graphNetworkNodeDiagram(DATA_PATH + "archetypes.csv", "test", "test", OUTPUT_PATH)
 		
+		#sampleSize = 100
+		#xValues = np.random.normal(50, 25, sampleSize)
+		#yValues = np.random.normal(50, 25, sampleSize)
+		#zValues = np.random.normal(50, 25, sampleSize)
+		#graphPNG3DScatter(xValues, yValues, zValues, "x", "y", "z", "test 3d scatter graph", 'test 3d scatter graph', '')
+		
+		
 		self.BUTTON_FUNCTION_MAP = [
 			["Data integrity", "LABEL"],
 			["Print data as read", self.dataIntegrityCheck_Printouts],
@@ -43,6 +52,7 @@ class NarracatLauncher(Frame):
 			["Output stories and metadata", self.dataOutput],
 			["Choices", "LABEL"],
 			["Choice graphs", self.choiceGraphs],
+			["Choices x choices", "LABEL"],
 			["Chi squared tests", self.chiSquaredContingencies],
 			["Answer contingencies", self.answerContingencies],
 			["Scales", "LABEL"],
@@ -51,10 +61,12 @@ class NarracatLauncher(Frame):
 			["T tests", self.tTests],
 			["Skew differences", self.skewDifferences],
 			["Scale histograms by choice", self.scaleHistogramsByChoice],
-			["Scales with scales", "LABEL"],
+			["Scale histograms by choice combined 3D", self.stackedScaleHistogramsByChoice],
+			["Scales x scales", "LABEL"],
 			["Correlation matrix", self.correlationMatrix],
 			["Scatter graphs", self.scatterGraphs],
 			["Scales x scales + choices", "LABEL"],
+			["Correlation CSV summaries by choices", self.correlationCSVSummariesByChoice],
 			["Correlation matrices by choice", self.correlationMatricesByChoice],
 			["Scatter graphs by choice", self.scatterGraphsByChoice],
 			]
@@ -244,7 +256,10 @@ class NarracatLauncher(Frame):
 		writeStoriesToTextFile(self.questions, self.stories, includeMetadata=False)
 		writeStoriesToTextFile(self.questions, self.stories, includeMetadata=True)
 		writeOtherResponsesToQuestions(self.questions, self.stories)
-		writeEmptyThemesFile(self.stories)
+		if WRITE_EMPTY_THEMES_FILE_TO_FILL_IN_BY_HAND:
+			writeEmptyThemesFile(self.stories)
+		if WRITE_THEMES_FILE_FROM_THEMES_QUESTION:
+			writeThemesFileWithDataFromThemesQuestion(self.stories, THEMES_QUESTION_ID)
 		writeInfoAboutPeopleAndNumberOfStoriesTold(self.questions, self.stories, self.participants)
 		print '\n data output DONE'
 	
@@ -303,6 +318,13 @@ class NarracatLauncher(Frame):
 		for slice in SLICES:
 			graphScaleHistogramsPerQuestionAnswer(self.questions, self.stories, slice=slice)
 		print '\n scale histograms by choice DONE'
+		
+	def stackedScaleHistogramsByChoice(self):
+		if not self.questions and self.participants and self.stories:
+			return
+		for slice in SLICES:
+			graphStackedScaleHistogramsPerQuestionAnswer(self.questions, self.stories, slice=slice)
+		print '\n stacked scale histograms by choice DONE'
 	
 	# SCALES WITH SCALES
 	
@@ -322,12 +344,19 @@ class NarracatLauncher(Frame):
 	
 	# SCALES WITH SCALES AND CHOICES
 	
+	def correlationCSVSummariesByChoice(self):
+		if not self.questions and self.participants and self.stories:
+			return
+		for slice in SLICES:
+			writeCorrelationsToCSVForQuestionAnswers(self.questions, self.stories, slice=slice)
+			writeDifferencesInCorrelationsToCSVForQuestionAnswers(self.questions, self.stories, slice=slice)
+		print '\n correlation matrices by choice DONE'
+	
 	def correlationMatricesByChoice(self):
 		if not self.questions and self.participants and self.stories:
 			return
 		for slice in SLICES:
 			graphScaleCorrelationMatrixForQuestionAnswers(self.questions, self.stories, slice=slice)
-			writeCorrelationsToCSVForQuestionAnswers(self.questions, self.stories, slice=slice)
 		print '\n correlation matrices by choice DONE'
 	
 	def scatterGraphsByChoice(self):

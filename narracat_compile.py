@@ -65,7 +65,7 @@ def graphHowManyScaleValuesWereEnteredPerParticipant(questions, participants):
 		numValuesPerParticipant.append(numValues)
 	name = "Number of scale values per participant"
 	# may need to change start, end and number of histogram bins to fit max number of scale answers collected
-	graphPNGHistogramWithStatsMarked(numValuesPerParticipant, name, name, participantsPath, bins=10, start=0, end=20)
+	graphPNGHistogramWithStatsMarked(numValuesPerParticipant, name, name, participantsPath, bins=10, start=0, end=80)
 
 # how many stories have a N/A value for each scale (or don't have any value at all)
 # how many stories have extreme high or low values for each scale
@@ -187,12 +187,15 @@ def graphScaleHistograms(questions, stories, inOwnDirectory=True, slice=ALL_DATA
 def graphScaleHistogramsPerQuestionAnswer(questions, stories, slice=ALL_DATA_SLICE, writeSelections=True):
 	print 'writing scale histograms by answer ... (%s)' % slice
 	graphsWritten = 0
-	lowerLimitStoryNumber = LOWER_LIMIT_STORY_NUMBER_FOR_COMPARISONS
+	lowerLimitStoryNumber = LOWER_LIMIT_STORY_NUMBER_FOR_COMPARISONS 
 	choiceQuestions = gatherChoiceQuestions(questions)
 	scaleQuestions = gatherScaleQuestions(questions)
 	for choiceQuestion in choiceQuestions:
 		print '  ... considering question %s ... ' % choiceQuestion.shortName
-		for answer in choiceQuestion.shortResponseNames:
+		answersToCheck = []
+		answersToCheck.extend(choiceQuestion.shortResponseNames)
+		answersToCheck = removeDuplicates(answersToCheck)
+		for answer in answersToCheck:
 			storiesWithThisAnswer = []
 			for story in stories:
 				if story.matchesSlice(slice):
@@ -257,6 +260,48 @@ def graphScaleHistogramsPerQuestionAnswer(questions, stories, slice=ALL_DATA_SLI
 						print '  ... %s graphs written' % graphsWritten
 						
 	print '  done writing scale histograms by answer. (%s)' % slice
+	
+# scale histograms sliced by answers to questions (happy, sad, etc)
+def graphStackedScaleHistogramsPerQuestionAnswer(questions, stories, slice=ALL_DATA_SLICE, writeSelections=True):
+	print 'writing scale histograms by answer ... (%s)' % slice
+	graphsWritten = 0
+	lowerLimitStoryNumber = LOWER_LIMIT_STORY_NUMBER_FOR_COMPARISONS
+	choiceQuestions = gatherChoiceQuestions(questions)
+	scaleQuestions = gatherScaleQuestions(questions)
+	for scaleQuestion in scaleQuestions:
+		for choiceQuestion in choiceQuestions:
+			print '  ... considering scale %s with question %s ... ' % (scaleQuestion.shortName, choiceQuestion.shortName)
+			numbersForThisScaleAndQuestion = []
+			answerLabels = []
+			answersToCheck = []
+			answersToCheck.extend(choiceQuestion.shortResponseNames)
+			answersToCheck = removeDuplicates(answersToCheck)
+			for answer in answersToCheck:
+				storiesWithThisAnswer = []
+				
+				for story in stories:
+					if story.matchesSlice(slice):
+						if story.hasAnswerForQuestionID(answer, choiceQuestion.id):
+							storiesWithThisAnswer.append(story)
+				if len(storiesWithThisAnswer) >= lowerLimitStoryNumber:
+						numbersArray = scaleQuestion.gatherScaleValuesFromStories(storiesWithThisAnswer)
+						if numbersArray and len(numbersArray) >= lowerLimitStoryNumber:
+							numbersForThisScaleAndQuestion.append(numbersArray)
+							answerLabels.append(answer)
+						
+			name = "%s with %s" % (scaleQuestion.shortName, choiceQuestion.shortName)
+			startPath = createPathIfNonexistent(OUTPUT_PATH + "scale histograms" + os.sep)
+			startPath = createPathIfNonexistent(startPath + "by question answer" + os.sep)
+			if DATA_HAS_SLICES:
+				path = createPathIfNonexistent(startPath + slice + os.sep)
+			else:
+				path = startPath
+			graphStackedPNGHistogramWithStatsMarked(numbersForThisScaleAndQuestion, name, name, answerLabels, path, slice=slice)
+			graphsWritten += 1
+			if graphsWritten % 20 == 0:
+				print '  ... %s graphs written' % graphsWritten
+						
+	print '  done writing stacked scale histograms by answer. (%s)' % slice
 	
 # -----------------------------------------------------------------------------------------------------------------
 # graphing question answers
@@ -358,7 +403,7 @@ def graphAnswerContingencies(questions, stories, chiSquared=False, slice=ALL_DAT
 	choiceQuestions = gatherChoiceQuestions(questions)
 	for i in range(len(choiceQuestions)):
 		for j in range(len(choiceQuestions)):
-			if 1:# i < j: 
+			if DRAW_GRAPHS_ON_BOTH_SIDES_OF_BINARY_COMBINATIONS or i < j: 
 				firstQuestion = choiceQuestions[i]
 				secondQuestion = choiceQuestions[j]
 				data = []
@@ -406,6 +451,8 @@ def graphAnswerContingencies(questions, stories, chiSquared=False, slice=ALL_DAT
 									smallestCellValue = abs(data[k][l])
 						chiSquaredValue, chiSquaredPValue = graphChiSquaredContingencyCircleMatrix(xLabels, yLabels, data, 
 												graphName, note, graphName, contingenciesPathWithSlice, slice=slice)
+						if chiSquaredPValue:
+							print '        Writing graph: ', graphName, chiSquaredValue, chiSquaredPValue
 						collectedResultsForChiSquaredCSVReport.append((firstQuestion.shortName, secondQuestion.shortName, 
 												chiSquaredValue, chiSquaredPValue, smallestCellValue))
 					else:
@@ -430,7 +477,7 @@ def graphAnswerContingencies(questions, stories, chiSquared=False, slice=ALL_DAT
 				outputFile.write("\n%s," % line[0])
 				lastFirstQuestion = line[0]
 			if line[4] >= 5:
-				if line[3] <= SIGNIFICANCE_VALUE_REPORTING_THRESHOLD:
+				if line[3] < SIGNIFICANCE_VALUE_REPORTING_THRESHOLD:
 					outputFile.write("p=%.3f c=%.3f n=%s," %(line[3], line[2], line[4]))
 				else:
 					outputFile.write('NS,')
@@ -488,14 +535,17 @@ def doTTestsToCompareScaleValuesWithQuestionAnswers(questions, stories, slice=AL
 					for secondAnswer in answerValuesForThisQuestion:
 						if firstAnswer != secondAnswer:
 							normal, t, tp = ttestForTwoChoiceQuestions(answerValuesForThisQuestion[firstAnswer], answerValuesForThisQuestion[secondAnswer])
-							size, color = sizeAndColorForTTestStats(normal, t, tp)
 							if tp < SIGNIFICANCE_VALUE_REPORTING_THRESHOLD and abs(t) >= T_TEST_VALUE_REPORTING_THRESHOLD:
 								pValue = tp
+								value = t
+								size, color = sizeAndColorForTTestStats(normal, t, tp)
 								answerSubsetsToGraph.append(firstAnswer)
 								answerSubsetsToGraph.append(secondAnswer)
 							else:
+								size = 0
+								color = "#000000"
+								value = 0
 								pValue = 0
-							value = t
 						else:
 							size = 0
 							color = "#000000"
@@ -690,7 +740,7 @@ def graphScaleScattergramsOrCorrelationMatrix(questions, stories, extraName=None
 			pValues.append([])
 			colors.append([])
 		for j in range(len(scaleQuestions)):
-			if 1: #i < j or drawMatrix:
+			if DRAW_GRAPHS_ON_BOTH_SIDES_OF_BINARY_COMBINATIONS or drawMatrix or i < j:
 				xValues = []
 				yValues = []
 				for story in stories:
@@ -703,7 +753,7 @@ def graphScaleScattergramsOrCorrelationMatrix(questions, stories, extraName=None
 					if len(xValues) >= lowerLimitValueNumber and len(yValues) >= lowerLimitValueNumber:
 						normal, r, rp = correlationStatsForTwoScales(xValues, yValues, roundValues=False)
 						size, color = sizeAndColorForCorrelationStats(normal, r, rp)
-						if rp <= SIGNIFICANCE_VALUE_REPORTING_THRESHOLD and abs(r) >= CORRELATION_COEFF_REPORTING_THRESHOLD:
+						if rp < SIGNIFICANCE_VALUE_REPORTING_THRESHOLD and abs(r) >= CORRELATION_COEFF_REPORTING_THRESHOLD:
 							pValue = rp
 						else:
 							pValue = 0
@@ -803,7 +853,9 @@ def graphScaleScattergramsForQuestionAnswers(questions, stories, slice=ALL_DATA_
 	
 def writeCorrelationsToCSVForQuestionAnswers(questions, stories, slice=ALL_DATA_SLICE):
 	print 'writing correlation values to CSV by question answer ... (%s)' % slice
-	outputFileName = OUTPUT_PATH + 'correlations by question answer.csv'
+	corrMatrixPath = createPathIfNonexistent(OUTPUT_PATH + "correlation matrix" + os.sep)
+	outputFileName = corrMatrixPath + 'correlations by question answer.csv'
+	linesWritten = 0
 	csvOutput = codecs.open(outputFileName, encoding='utf-8', mode='w+')
 	csvOutput.write('Scale 1 x Scale 2 x Question, Question, Answer, p (significance value), r (correlation coefficient), n (sample size)\n')
 	try:
@@ -846,8 +898,92 @@ def writeCorrelationsToCSVForQuestionAnswers(questions, stories, slice=ALL_DATA_
 																	choiceQuestion.shortName,
 																	choiceQuestion.shortName,
 																	answer, pValue, value, len(xValues)))
+								linesWritten += 1
 	finally:
 		csvOutput.close()
+		print '  done writing correlation values to CSV by question answer (%s lines written). (%s)' % (linesWritten, slice)
+	
+def writeDifferencesInCorrelationsToCSVForQuestionAnswers(questions, stories, slice=ALL_DATA_SLICE):
+	print 'writing correlation values with diffs >= %s to CSV by question answer ... (%s)' % (FLAG_CORRS_FOR_QUESTIONS_WITH_PVALUE_DIFF, slice)
+	corrMatrixPath = createPathIfNonexistent(OUTPUT_PATH + "correlation matrix" + os.sep)
+	outputFileName = corrMatrixPath + 'correlations by question answer with diffs over threshold.csv'
+	linesWritten = 0
+	combosWritten = 0
+	csvOutput = codecs.open(outputFileName, encoding='utf-8', mode='w+')
+	csvOutput.write('Scale 1 x Scale 2 x Question, Question, Answer, p (significance value), r (correlation coefficient), n (sample size)\n')
+	try:
+		lowerLimitStoryNumber = LOWER_LIMIT_STORY_NUMBER_FOR_CORR_DIFFS_COMPARISONS
+		scaleQuestions = gatherScaleQuestions(questions)
+		choiceQuestions = gatherChoiceQuestions(questions)
+		for i in range(len(scaleQuestions)):
+			for j in range(len(scaleQuestions)):
+				if i < j:
+					if LEAVE_PARTICIPANT_ONLY_PAIRS_OUT_OF_CORR_DIFFS:
+						goAhead = (scaleQuestions[i].refersTo == "story" or scaleQuestions[j].refersTo == "story")
+					else:
+						goAhead = True
+					if goAhead:
+						for choiceQuestion in choiceQuestions:
+							answersToCheck = []
+							answersToCheck.extend(choiceQuestion.shortResponseNames)
+							answersToCheck.append(NO_ANSWER)
+							answersToCheck = removeDuplicates(answersToCheck)
+							answersWithPValues = []
+							pValues = []
+							rValues = []
+							sampleSizes = []
+							for answer in answersToCheck:
+								storiesWithThisAnswer = []
+								for story in stories:
+									if story.matchesSlice(slice):
+										if story.hasAnswerForQuestionID(answer, choiceQuestion.id):
+											storiesWithThisAnswer.append(story)
+								if len(storiesWithThisAnswer) >= lowerLimitStoryNumber: 
+									xValues = []
+									yValues = []
+									for story in storiesWithThisAnswer:
+										if story.matchesSlice(slice):
+											xy = story.gatherScaleValuesForListOfIDs([scaleQuestions[i].id, scaleQuestions[j].id])
+											if xy:
+												xValues.append(int(xy[0]))
+												yValues.append(int(xy[1]))
+									if len(xValues) >= lowerLimitStoryNumber and len(yValues) >= lowerLimitStoryNumber:
+										normal, r, rp = correlationStatsForTwoScales(xValues, yValues, roundValues=False)
+										pValue = round(rp, 4)
+										value = round(r, 4)
+										answersWithPValues.append(answer)
+										pValues.append(pValue)
+										rValues.append(value)
+										sampleSizes.append(len(yValues))
+									else:
+										pValue = 100
+										value = 100
+							lowestPValue = 100
+							highestPValue = 0
+							for pValue in pValues:
+								if pValue > highestPValue:
+									highestPValue = pValue
+								if pValue < lowestPValue:
+									lowestPValue = pValue
+							highestRValue = 0
+							for rValue in rValues:
+								if rValue > highestRValue:
+									highestRValue = rValue
+							if lowestPValue < SIGNIFICANCE_VALUE_REPORTING_THRESHOLD_FOR_CORR_DIFFS:
+								if highestRValue >= CORRELATION_COEFF_REPORTING_THRESHOLD_FOR_CORR_DIFFS:
+									if highestPValue - lowestPValue >= FLAG_CORRS_FOR_QUESTIONS_WITH_PVALUE_DIFF:
+										for k in range(len(answersWithPValues)):
+											csvOutput.write('%s x %s x %s,%s,%s,%s,%s,%s\n' % (
+																				scaleQuestions[i].shortName, 
+																				scaleQuestions[j].shortName, 
+																				choiceQuestion.shortName,
+																				choiceQuestion.shortName,
+																				answersWithPValues[k], pValues[k], rValues[k], sampleSizes[k]))
+											linesWritten += 1
+										combosWritten += 1
+	finally:
+		csvOutput.close()
+		print '  done writing differing correlation values to CSV by question answer (%s lines, %s combos written). (%s)' % (linesWritten, combosWritten, slice)
 	
 # -----------------------------------------------------------------------------------------------------------------
 # stability landscapes
@@ -870,7 +1006,7 @@ def graphScaleContourGraphsAgainstStability(questions, stories, stabilityQuestio
 		for i in range(len(scaleQuestions)):
 			for j in range(len(scaleQuestions)):
 				#if i < j and scaleQuestions[i].shortName != stabilityQuestionName and scaleQuestions[j].shortName != stabilityQuestionName:
-				if scaleQuestions[i].shortName != stabilityQuestionName and scaleQuestions[j].shortName != stabilityQuestionName:
+				if (DRAW_GRAPHS_ON_BOTH_SIDES_OF_BINARY_COMBINATIONS or i < j) and scaleQuestions[i].shortName != stabilityQuestionName and scaleQuestions[j].shortName != stabilityQuestionName:
 					xArray = []
 					yArray = []
 					zArray = []

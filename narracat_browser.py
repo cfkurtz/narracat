@@ -338,5 +338,6 @@ class NarracatBrowser(Frame):
 				total += count
 			self.storyText.insert(END, 'THEMES\n\n%s (%s)\n' % (selection, total))
 			for theme, count in themesAndCountsSorted:
-				self.storyText.insert(END, "%s %s\n" % (count, theme))
+				percent = 100.0 * count / total
+				self.storyText.insert(END, "%s %s (%.1f%%)\n" % (count, theme, percent))
 			self.storyText.insert(END, "  Total: %s\n\n" % total)

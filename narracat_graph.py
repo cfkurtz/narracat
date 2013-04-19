@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d
 from matplotlib.patches import Circle, Rectangle
 from matplotlib.collections import PatchCollection
+import matplotlib.cm as colorModule
 
 # -----------------------------------------------------------------------------------------------------------------
 # graphing methods that write one PNG file
@@ -36,6 +37,17 @@ def graphPNGHistogramWithStatsMarked(numbersArray, graphName, pngFileName, pngFi
 	if not numbersArray:
 		return
 	
+	# check for pathological condition of NO variation (all numbers are the same)
+	allTheSameNumber = True
+	for i in range(len(numbersArray)):
+		if i > 0 and numbersArray[i] != numbersArray[i-1]:
+			allTheSameNumber = False
+			break
+	
+	if allTheSameNumber:
+		print 'Could not write graph [%s %s] - numbers all the same!' % (graphName, slice)
+		return
+
 	# convert to numpy array
 	npArray = np.array(numbersArray)
 	
@@ -58,19 +70,7 @@ def graphPNGHistogramWithStatsMarked(numbersArray, graphName, pngFileName, pngFi
 	figure = plt.figure()
 	axes = figure.add_subplot(111)
 	
-	(n, bins, rects) = plt.hist(npArray, bins)
-	
-	minValue = 100000
-	maxValue = 0
-	for value in npArray:
-		if value < minValue: 
-			minValue = value
-		if value > maxValue:
-			maxValue = value
-	range = maxValue - minValue
-	
-	if range == 0:
-		return
+	(n, bins, rects) = plt.hist(npArray, bins, color='blue')
 	
 	for rect in rects:
 		if rect.get_height() > 0:
@@ -89,7 +89,7 @@ def graphPNGHistogramWithStatsMarked(numbersArray, graphName, pngFileName, pngFi
 	plt.ylabel("count with value")
 	
 	# mark mean and std. dev. on graph
-	plt.axvline(mean, color='r', linewidth=2)
+	plt.axvline(mean, color='r', linewidth=HISTOGRAM_MEAN_LINE_WIDTH)
 	plt.axvspan(mean-std, mean+std, color='y', alpha=0.2)
 	
 	axes.set_xlim(start, end)
@@ -97,6 +97,67 @@ def graphPNGHistogramWithStatsMarked(numbersArray, graphName, pngFileName, pngFi
 	plt.text(0.5, 0.01, 
 			bottomNote, 
 			horizontalalignment='center', transform=figure.transFigure)
+	
+	plt.savefig(pngFilePath + cleanTextForFileName(pngFileName) + ".png", dpi=200)
+	plt.close(figure)
+	
+def graphStackedPNGHistogramWithStatsMarked(numbersArray, graphName, pngFileName, labels, pngFilePath, slice=ALL_DATA_SLICE, 
+										bins=NUM_HISTOGRAM_BINS, start=SLIDER_START, end=SLIDER_END):
+		
+	xLocations = np.arange(SLIDER_END-SLIDER_START+1) + 0.5
+	color = '#ccccff'
+	edgeColor = '#aaaaee'
+	textColor = '#000000'
+	
+	largestNumber = 0
+	for subArray in numbersArray:
+		for number in subArray:
+			if number > largestNumber:
+				largestNumber = number
+				
+	longestLabelLength = 0
+	for label in labels:
+		if len(label) > longestLabelLength:
+			longestLabelLength = len(label)
+			
+	# create bar chart
+	plt.clf()
+	figureWidth = 7.0
+	figureHeight = 10.0
+	figure = plt.figure(figsize=(figureWidth, figureHeight))
+	axes = figure.add_subplot(211, projection='3d')
+
+	colorMap = colorModule.get_cmap('rainbow_r', len(numbersArray))
+	colors = [colorMap(1.*i/len(numbersArray)) for i in range(len(numbersArray))]
+	#colors = ['red', 'blue', 'green', 'orange', 'purple', 'yellow', 'gray', 'black', 'white', 'pink', 'pink', 'pink', 'pink', 'pink', 'pink', 'pink', 'pink']
+	yPlacements = []
+	yGap = len(labels)
+	for i, subArray in enumerate(numbersArray):
+	    histogram, xPlacements = np.histogram(subArray, bins=SLIDER_END-SLIDER_START+1)
+	    xSizes = np.diff(xPlacements)
+	    ySizes = np.zeros_like(histogram)
+	    yPlacement = i * (1 + yGap) * np.ones_like(histogram)
+	    yPlacements.append(yPlacement[0])
+	    zPlacement = np.zeros_like(histogram)
+	    axes.bar3d(xPlacements[:-1], yPlacement, zPlacement, xSizes, ySizes, histogram, color=colors[i], alpha=0.1, edgecolor='gray')
+	    
+	# making separate subplot for legend because otherwise it draws over the graph!
+	legendRects = []
+	i = 0
+	for label in labels:
+		rect = plt.Rectangle((0, 0), 1, 1, fc=colors[i])
+		legendRects.append(rect)
+		i += 1
+	legendSubplot = figure.add_subplot(212, frameon=False)
+	legendSubplot.axes.get_yaxis().set_visible(False)
+	legendSubplot.axes.get_xaxis().set_visible(False)
+	legendSubplot.legend(legendRects, labels, loc=10, frameon=False)
+
+	if DATA_HAS_SLICES:
+		graphNameToShow = graphName + " (%s)" % slice
+	else:
+		graphNameToShow = graphName
+	plt.suptitle(graphNameToShow, fontsize=10)
 	
 	plt.savefig(pngFilePath + cleanTextForFileName(pngFileName) + ".png", dpi=200)
 	plt.close(figure)
@@ -218,6 +279,38 @@ def graphPNGContourF(xValues, yValues, zValues, xAxisName, yAxisName, graphName,
 	except Exception, e:
 		print " >>>>>>>>>> could not save %s: %s" % (graphName, e)
 		
+		
+def graphPNG3DScatter(xValues, yValues, zValues, colors, xAxisName, yAxisName, zAxisName, graphName, pngFileName, pngFilePath):
+	
+	npArrayX = np.array(xValues)
+	npArrayY = np.array(yValues)
+	npArrayZ = np.array(zValues)
+	
+	plt.clf()
+	figure = plt.figure(figsize=(6,6.5))
+	axes = axes3d.Axes3D(figure)
+	#axes.set_ylim(0, 200)
+	#axes.set_xlim(0, 200)
+	#axes.set_zlim(0, 200)
+
+	# you need a try-except here because of this error:
+	# ValueError: need more than 0 values to unpack
+	# it does NOT mean there are no Z values. i don't know what it means actually.
+	# should figure it out someday.
+	try:
+		axes.scatter(npArrayX, npArrayY, npArrayZ, c=colors, marker='s', s=10)
+	
+		axes.set_xlabel(xAxisName, fontsize=8)
+		axes.set_ylabel(yAxisName, fontsize=8)
+		
+		plt.suptitle(graphName)
+		
+		plt.savefig(pngFilePath + cleanTextForFileName(pngFileName) + ".png", dpi=200)
+		plt.close(figure)
+	except Exception, e:
+		print " >>>>>>>>>> could not save %s: %s" % (graphName, e)
+		
+		
 def graphPNGScatterGraph(xValues, yValues, xAxisName, yAxisName, graphName, pngFileName, pngFilePath, colors=None, size=20, slice=ALL_DATA_SLICE):
 
 	npArrayX = np.array(xValues)
@@ -231,10 +324,45 @@ def graphPNGScatterGraph(xValues, yValues, xAxisName, yAxisName, graphName, pngF
 		alpha = 0.2
 	else:
 		alpha = 1.0
-	if colors:
-		plt.scatter(npArrayX, npArrayY, c=colors, s=size, alpha=alpha)
+		
+	if DRAW_SCATTER_GRAPHS_WITH_SIZE_CIRCLES:
+		numSliderValues = SLIDER_END - SLIDER_START + 1
+		axes = figure.add_subplot(111)
+		axes.set_xlim(SLIDER_START - 1, SLIDER_END + 1)
+		axes.set_ylim(SLIDER_START - 1, SLIDER_END + 1)
+		
+		# circle sizes show number of points at circle
+		counts = {}
+		highestCount = 0
+		for index in range(len(xValues)):
+			xValue = xValues[index]
+			yValue = yValues[index]
+			if not counts.has_key((xValue, yValue)):
+				counts[(xValue, yValue)] = 0
+			counts[(xValue, yValue)] += 1
+			if counts[(xValue, yValue)] > highestCount:
+				highestCount = counts[(xValue, yValue)]
+		i = SLIDER_START
+		while i <= SLIDER_END:
+			j = SLIDER_START
+			while j <= SLIDER_END:
+				if counts.has_key((i, j)):
+					count = counts[(i, j)]
+					if count > 0:
+						# these size numbers are just what looks best
+						dotSize = 0.01 + 0.49 * count / highestCount
+						circle = Circle((i, j), dotSize, alpha=alpha, color='blue')
+						axes.add_patch(circle)
+				j += 1
+			i += 1
 	else:
-		plt.scatter(npArrayX, npArrayY, s=size, alpha=alpha)
+		if colors:
+			plt.scatter(npArrayX, npArrayY, c=colors, s=size, alpha=alpha)
+		else:
+			plt.scatter(npArrayX, npArrayY, s=size, alpha=alpha)
+		axes = figure.add_subplot(111)
+		axes.set_xlim(SLIDER_START, SLIDER_END)
+		axes.set_ylim(SLIDER_START, SLIDER_END)
 	
 	plt.xlabel(xAxisName, fontsize=8)
 	plt.ylabel(yAxisName, fontsize=8)
@@ -253,10 +381,6 @@ def graphPNGScatterGraph(xValues, yValues, xAxisName, yAxisName, graphName, pngF
 	# add giant r value - uncomment if desired
 	if rp < 0.05 and abs(r) >= 0.2:
 		plt.text(0.88, 0.8, '%.2f' % r, fontsize=48, horizontalalignment='right', transform=figure.transFigure)
-
-	axes = figure.add_subplot(111)
-	axes.set_xlim(SLIDER_START, SLIDER_END)
-	axes.set_ylim(SLIDER_START, SLIDER_END)
 
 	plt.savefig(pngFilePath + cleanTextForFileName(pngFileName) + ".png", dpi=200)
 	plt.close(figure)
@@ -347,7 +471,7 @@ def graphChiSquaredContingencyCircleMatrix(xLabels, yLabels, data, graphName, no
 	expectedSizes, maxValue = contingencySizesForData(expectedFrequencies, multiplier=0.7, startWithMaxValue=maxValue)
 				
 	plt.clf()
-	figure = plt.figure(figsize=(4 + longestXLabel*0.05 + len(xLabels)*0.14, 2 + longestYLabel*0.18 + len(yLabels)*0.14))
+	figure = plt.figure(figsize=(4 + longestXLabel*0.05 + len(xLabels)*0.14, 3 + longestYLabel*0.18 + len(yLabels)*0.14))
 	axes = figure.add_subplot(111)
 	# why is this necessary? no idea. for gender (2 slices) it comes out different
 	if len(xValues) == 2:
@@ -359,17 +483,20 @@ def graphChiSquaredContingencyCircleMatrix(xLabels, yLabels, data, graphName, no
 	axes.yaxis.grid(True, linestyle='-', which='major', color='#BEBEBE')
 	axes.set_axisbelow(True)
 	
+	expectedColor = "#EE9A00" # orange
+	observedColor = '#4682B4' # blue
+	
 	# generate circles
 	for i in range(len(xValues)):
 		for j in range(len(flippedYValues)):
 			observedSize = observedSizes[i][j]
 			expectedSize = expectedSizes[i][j]
 			if observedSize > 0:
-				expectedCircle = Circle((xValues[i], flippedYValues[j]), expectedSize, edgecolor="#B8B8B8", facecolor='none', fill=False, linewidth=1)
+				expectedCircle = Circle((xValues[i], flippedYValues[j]), expectedSize, edgecolor=expectedColor, facecolor='none', fill=False, linewidth=1)
 				axes.add_patch(expectedCircle)
-				observedCircle = Circle((xValues[i], flippedYValues[j]), observedSize, edgecolor="#FF0000", facecolor='none', fill=False, linewidth=1)
+				observedCircle = Circle((xValues[i], flippedYValues[j]), observedSize, edgecolor=observedColor, facecolor='none', fill=False, linewidth=1)
 				axes.add_patch(observedCircle)
-				plt.text(xValues[i], flippedYValues[j], '%d obs/%d exp' % (data[i][j], expectedFrequencies[i][j]), horizontalalignment='center', verticalalignment='center', fontsize=8)
+				plt.text(xValues[i], flippedYValues[j], '%d obs\n%d exp' % (data[i][j], expectedFrequencies[i][j]), horizontalalignment='center', verticalalignment='center', fontsize=8)
 		
 	# want the x axis ticks (names) on the top, not the bottom
 	axes.xaxis.set_ticks_position('top')
@@ -395,7 +522,7 @@ def graphChiSquaredContingencyCircleMatrix(xLabels, yLabels, data, graphName, no
 		graphNameToShow = graphName + " (%s)" % slice
 	else:
 		graphNameToShow = graphName
-	plt.text(0.95, 0.01, "Chi squared = %.3f, p = %.3f (red observed, grey expected)" % (chiSquaredValue, chiSquaredPValue), horizontalalignment='right', transform=figure.transFigure, fontsize=8)
+	plt.text(0.95, 0.01, "Chi squared = %.3f, p = %.3f (orange expected, blue observed)" % (chiSquaredValue, chiSquaredPValue), horizontalalignment='right', transform=figure.transFigure, fontsize=8)
 	plt.text(0.95, 0.05, graphNameToShow, horizontalalignment='right', transform=figure.transFigure, fontsize=8)
 	
 	plt.savefig(pngFilePath + cleanTextForFileName(pngFileName) + ".png", dpi=200)

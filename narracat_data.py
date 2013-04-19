@@ -471,6 +471,39 @@ class Participant():
 		for story in aParticipant.stories:
 			self.stories.append(story)
 			
+	# this is for the case where participant data is on some stories but not on all stories
+	# it must be copied to all stories for that participant
+	def copyParticipantDataToAllStoriesForParticipant(self, questions):
+		answersForThisParticipant = {}
+		for story in self.stories:
+			for questionID in story.answers.keys():
+				question = questionForID(questions, questionID)
+				if question:
+				 	if question.refersTo == "participant":
+						existingAnswers = story.gatherAnswersForQuestionID(question.id)
+						if question.isScale():
+							# a blank space for a scale is interpreted as "N/A", not a missing value
+							hasAnswer = existingAnswers != None and existingAnswers[0] != DOES_NOT_APPLY
+						else:
+							hasAnswer = existingAnswers != None
+						if hasAnswer:
+							answersForThisParticipant[question] = existingAnswers
+				else:
+					print 'Input error: could not find question to match ID %s' % (questionID)
+		for story in self.stories:
+			for question in answersForThisParticipant.keys():
+				existingAnswers = story.gatherAnswersForQuestionID(question.id)
+				if question.isScale():
+					# a blank space for a scale is interpreted as "N/A", not a missing value
+					hasAnswer = existingAnswers != None and existingAnswers[0] != DOES_NOT_APPLY
+				else:
+					hasAnswer = existingAnswers != None
+				if not hasAnswer:
+					for answer in answersForThisParticipant[question]:
+						story.addAnswer(question.id, answer)
+					if question.isScale():
+						story.removeAnswer(question.id, DOES_NOT_APPLY)
+			
 	# gathering data from stories ---------------------------------------------
 	
 	def gatherScaleValues(self, questions, fillWithZerosForMissingValues=True, slice=ALL_DATA_SLICE):
@@ -584,6 +617,52 @@ class Story():
 			if not self.answers.has_key(id):
 				self.answers[id] = []
 			self.answers[id].append(value)
+			
+	def removeAnswer(self, id, value):
+		if len(value.strip()):
+			if self.answers.has_key(id):
+				try:
+					self.answers[id].remove(value)
+				except:
+					# if it's not in the list
+					pass
+				
+	def addValueForStoryLengthQuestion(self, storyLengthQuestion):
+		textLength = len(self.text)
+		binNumber = -1
+		for i in range(len(STORY_LENGTH_QUESTION_BIN_TOPS)):
+			if textLength < STORY_LENGTH_QUESTION_BIN_TOPS[i]:
+				binNumber = i
+				break
+		if binNumber < 0:
+			binNumber = len(STORY_LENGTH_QUESTION_BIN_TOPS) - 1
+		answerToAdd = STORY_LENGTH_QUESTION_BIN_NAMES[binNumber]
+		self.addAnswer(storyLengthQuestion.id, answerToAdd)
+		
+	def countForWordsOfInterest(self, lookupWords):
+		count = 0
+		for lookupWord in lookupWords:
+			count += self.text.lower().count(lookupWord.lower())
+		return count
+	
+	def addValueForWordsOfInterestQuestion(self, question, lookupWords, binTops, binNames):
+		count = self.countForWordsOfInterest(lookupWords)
+		binIndex = None
+		for i in range(len(binTops)):
+			if count <= binTops[i]:
+				binIndex = i
+				break
+		if binIndex != None:
+			self.addAnswer(question.id, binNames[binIndex])
+			
+	def addValueForNumStoriesToldQuestion(self, question, value, binTops, binNames):
+		binIndex = None
+		for i in range(len(binTops)):
+			if value <= binTops[i]:
+				binIndex = i
+				break
+		if binIndex != None:
+			self.addAnswer(question.id, binNames[binIndex])
 			
 	# gathering data from answers ---------------------------------------------
 	
@@ -993,6 +1072,7 @@ def readDataFromCSVFiles(dataFileName, labelsFileName, readMultipleDataFiles, da
 		# ================== first, read column definitions that say what each column means
 		rowIndex = 0
 		for row in labels:
+			
 			if rowIndex == 0: # skip header row
 				rowIndex = 1
 				continue
@@ -1001,7 +1081,9 @@ def readDataFromCSVFiles(dataFileName, labelsFileName, readMultipleDataFiles, da
 			if len(row) > 2:
 				colDef = ColumnDefinition(row, rowIndex)
 				#print 'using column definition to read data ', colDef.id, colDef.codes, colDef.shortResponseNames
-				columnDefinitions.append(colDef)
+				if colDef.id:
+					#print 'adding column definition ', colDef.id, colDef.codes, colDef.shortResponseNames
+					columnDefinitions.append(colDef)
 			rowIndex += 1
 		# ================== next, build question list from column definitions
 		for colDef in columnDefinitions:
@@ -1022,8 +1104,10 @@ def readDataFromCSVFiles(dataFileName, labelsFileName, readMultipleDataFiles, da
 				question = Question(colDef.id, colDef.refersTo, colDef.longName, colDef.shortName, colDef.type, 
 								colDef.codes, colDef.longResponseNames, colDef.shortResponseNames)
 				questions.append(question)
+				
 		#printColumnDefinitionsToCheckTheyWereReadRight(columnDefinitions)
 		#printQuestionsToCheckTheyWereReadRight(questions, 'before removing discards and duplicates')
+		
 		# ================== now trim question list as required
 		# remove questions marked "discard" 
 		questionsToKeep = []
@@ -1050,11 +1134,11 @@ def readDataFromCSVFiles(dataFileName, labelsFileName, readMultipleDataFiles, da
 			questions = []
 			questions.extend(questionsToKeep)
 			# finally, add question for story number (if it was not there already), so it will come out in graphs
-			# note, if there are more than 7 possible stories this must be increased
+			# note, if there are more than 10 possible stories this must be increased
 			if INCLUDE_QUESTION_NUMBER_QUESTION and not QUESTION_NUMBER_APPEARS_AS_QUESTION:
 				newQuestion = Question(QUESTION_NUMBER_ID, 'story', QUESTION_NUMBER_ID, QUESTION_NUMBER_ID, 
-									TYPE_SINGLE_CHOICE, ['1', '2', '3', '4', '5', '6', '7'], 
-									QUESTION_NUMBER_NAMES, QUESTION_NUMBER_NAMES, True)
+									TYPE_SINGLE_CHOICE, ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], 
+									QUESTION_NUMBER_NAMES, QUESTION_NUMBER_NAMES)
 				questions.append(newQuestion) 
 			#printQuestionsToCheckTheyWereReadRight(questions, 'after removing discards and duplicates')
 	finally:
@@ -1103,6 +1187,15 @@ def readDataFromCSVFiles(dataFileName, labelsFileName, readMultipleDataFiles, da
 			for participantToDelete in participantsToDelete:
 				participants.remove(participantToDelete)
 				
+		# this is for the case where participant data is included on only one story in the set
+		# note: because this is before "removeEmptyStories" it will copy participant info to empty stories;
+		# but that doesn't matter because it will delete them later anyway
+		# the reason I put it first is because you might have the case (I did have the case) where
+		# the participant data is for one story only, AND that story has no title or text.
+		if PARTICIPANT_DATA_ON_ONE_STORY_ONLY:
+			for participant in participants:
+				participant.copyParticipantDataToAllStoriesForParticipant(questions)
+				
 		# more stories are created at the start than may be filled; remove empty ones
 		for participant in participants:
 			participant.removeEmptyStories()
@@ -1119,6 +1212,64 @@ def readDataFromCSVFiles(dataFileName, labelsFileName, readMultipleDataFiles, da
 		# create global list of stories
 		for participant in participants:
 			stories.extend(participant.stories)
+			
+		# add story length metadata if desired
+		if ADD_QUESTION_WITH_STORY_LENGTH:
+			# use this to find out how high your top bin should be to catch all the stories you have
+			maxStoryLength = 0
+			for story in stories:
+				if len(story.text) > maxStoryLength:
+					maxStoryLength = len(story.text)
+			print 'Longest story text is: ', maxStoryLength
+			newQuestion = Question(STORY_LENGTH_QUESTION_ID, 'story', STORY_LENGTH_QUESTION_ID, STORY_LENGTH_QUESTION_ID, 
+								TYPE_SINGLE_CHOICE, 
+								STORY_LENGTH_QUESTION_BIN_NAMES, STORY_LENGTH_QUESTION_BIN_NAMES, STORY_LENGTH_QUESTION_BIN_NAMES)
+			questions.append(newQuestion)
+			for story in stories:
+				story.addValueForStoryLengthQuestion(newQuestion)
+				
+		# add "words of interest" metadata if desired
+		if WORDS_OF_INTEREST != None and len(WORDS_OF_INTEREST.keys()):
+			for questionName in WORDS_OF_INTEREST.keys():
+				wordsAndBins = WORDS_OF_INTEREST[questionName]
+				lookupWords = wordsAndBins[0]
+				bins = wordsAndBins[1]
+				binNames = []
+				lastBin = 0
+				for bin in bins:
+					if bin == 0:
+						binNames.append(str(bin))
+					else:
+						binNames.append(str(lastBin+1) + " to " + str(bin))
+					lastBin = bin
+				newQuestion = Question(questionName, 'story', questionName, questionName, 
+									TYPE_SINGLE_CHOICE, binNames, binNames, binNames)
+				questions.append(newQuestion)
+				for story in stories:
+					story.addValueForWordsOfInterestQuestion(newQuestion, lookupWords, bins, binNames)
+					
+		if ADD_QUESTION_WITH_NUM_STORIES_TOLD:
+			highestNumTold = 0
+			for participant in participants:
+				if len(participant.stories) > highestNumTold:
+					highestNumTold = len(participant.stories)
+			print 'Max number of stories told is: ', highestNumTold
+			binTops = BIN_TOPS_FOR_NUM_STORIES_TOLD_QUESTION
+			binNames = []
+			lastBinTop = 0
+			for binTop in binTops:
+				if binTop == 1 or binTop - lastBinTop == 1:
+					binNames.append(str(binTop))
+				else:
+					binNames.append(str(lastBinTop+1) + " to " + str(binTop))
+				lastBinTop = binTop
+			newQuestion = Question(QUESTION_NAME_FOR_NUM_STORIES_TOLD, 'participant', QUESTION_NAME_FOR_NUM_STORIES_TOLD, QUESTION_NAME_FOR_NUM_STORIES_TOLD, 
+								TYPE_SINGLE_CHOICE, binNames, binNames, binNames)
+			questions.append(newQuestion)
+			for participant in participants:
+				numStories = len(participant.stories)
+				for story in participant.stories:
+					story.addValueForNumStoriesToldQuestion(newQuestion, numStories, binTops, binNames)
 			
 		# final run-through to fix any missing story titles
 		# can end up unassigned in some cases
@@ -1351,13 +1502,46 @@ def writeEmptyThemesFile(stories):
 	# 4: second theme
 	# 5: third theme
 	# 6: story text, for reference only, not read back in
-	outputFileName = createPathIfNonexistent(OUTPUT_PATH + "overall" + os.sep) + "themes.csv"
+	outputFileName = createPathIfNonexistent(OUTPUT_PATH + "overall" + os.sep) + "themes empty.csv"
 	textLines = []
 	textLines.append('Title,Text to find if no title match,First theme,Second theme,Third theme,Story text for reference (not read),Comment (not read)')
 	for story in stories:
 		cleanedUpTitle = '"%s"' % story.title.replace('"', "'") # quotes INSIDE the title mess things up
 		cleanedUpText = '"%s"' % story.text.replace('"', "'") # quotes INSIDE the text mess things up
 		textLines.append("%s,,,,,%s" % (cleanedUpTitle, cleanedUpText))
+	text = '\n'.join(textLines)
+	outputFile = open(outputFileName, 'w')
+	try:
+		outputFile.write(text)
+	finally:
+		outputFile.close()
+
+def writeThemesFileWithDataFromThemesQuestion(stories, themesQuestionID):
+	print 'writing themes file with data from question ...'
+	# columns in themes file:
+	# 1: story title
+	# 2: text to find in story text if title does not match (use for multiple untitled stories, leave blank otherwise)
+	# 3: first theme for story
+	# 4: second theme
+	# 5: third theme
+	# 6: story text, for reference only, not read back in
+	outputFileName = THEMES_FILE_PATH
+	textLines = []
+	textLines.append('Title,Text to find if no title match,First theme,Second theme,Third theme,Story text for reference (not read),Comment (not read)')
+	for story in stories:
+		themes = story.gatherAnswersForQuestionID(themesQuestionID)
+		firstTheme = ""
+		secondTheme = ""
+		thirdTheme = ""
+		if themes and len(themes):
+			firstTheme = themes[0]
+			if len(themes) > 1:
+				secondTheme = themes[1]
+				if len(themes) > 2:
+					thirdTheme = themes[2]
+		cleanedUpTitle = '"%s"' % story.title.replace('"', "'") # quotes INSIDE the title mess things up
+		cleanedUpText = '"%s"' % story.text.replace('"', "'") # quotes INSIDE the text mess things up
+		textLines.append("%s,,%s,%s,%s,%s" % (cleanedUpTitle, firstTheme, secondTheme, thirdTheme, cleanedUpText))
 	text = '\n'.join(textLines)
 	outputFile = open(outputFileName, 'w')
 	try:

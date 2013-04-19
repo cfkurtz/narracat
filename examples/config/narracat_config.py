@@ -1,7 +1,12 @@
 # -----------------------------------------------------------------------------------------------------------------
-# NarraCat: Tools for narrative catalysis
-# Cynthia Kurtz
+# NarraCat: Tools for Narrative Catalysis
 # -----------------------------------------------------------------------------------------------------------------
+# License: Affero GPL 1.0 http://www.affero.org/oagpl.html
+# Google Code Project: http://code.google.com/p/narracat/
+# Copyright 2011 Cynthia Kurtz
+# -----------------------------------------------------------------------------------------------------------------
+# This file:
+#
 # Configuration particular to project
 # -----------------------------------------------------------------------------------------------------------------
 
@@ -19,8 +24,15 @@ PICKLE_FILE_NAME = "pickle.txt"
 HAS_MULTIPLE_DATA_FILES = False # this is if you need to read from two or more data files with the same format
 MULTIPLE_DATA_FILE_NAMES = []
 
+# themes are from qualitative data analysis
 DATA_HAS_THEMES = True
 THEMES_FILE_NAME = "themes_example.csv"
+WRITE_EMPTY_THEMES_FILE_TO_FILL_IN_BY_HAND = False # you probably only need to do this once
+
+# sometimes it is easier to include themes in the data instead of separately
+# but you still might want to create a themes file, since this feeds what shows up in the browser
+THEMES_QUESTION_ID = "Themes"
+WRITE_THEMES_FILE_FROM_THEMES_QUESTION = False # you probably only need to do this once
 
 DOES_NOT_APPLY = "N/A"
 NO_ANSWER = "No answer"
@@ -168,6 +180,34 @@ SHOW_CLUSTER_ANALYSIS_OPTIONS = False
 FORMAT_FILE_HAS_ANSWERS_LUMPING_COLUMN = True
 USE_LUMPED_ANSWERS = True # you can use this to temporarily turn off lumping when you need it off
 
+# to add a question about how long each story is (in characters)
+# sometimes longer stories have different patterns than shorter stories
+ADD_QUESTION_WITH_STORY_LENGTH = True
+STORY_LENGTH_QUESTION_ID = 'Story length'
+# run program and read CSV data to find out length of longest story
+# if any lengths exceed the last bin-top, they will be placed in the last bin anyway (so make that number near or above the max)
+# to "lump" bins just leave some out
+STORY_LENGTH_QUESTION_BIN_TOPS = [1000, 2000, 3000, 6000]
+# this sets up names for the bins - change if you want the bin names to look different
+STORY_LENGTH_QUESTION_BIN_NAMES = []
+previousBin = 0
+for bin in STORY_LENGTH_QUESTION_BIN_TOPS:
+	STORY_LENGTH_QUESTION_BIN_NAMES.append(str(previousBin+1) + "-" + str(bin))
+	previousBin = bin
+
+# use this to add questions that mark how many instances of words in a special list are found in each story
+# each key in the dictionary is a question name; each value is a tuple
+# first array in tuple is words/phrases to look for, second array is bins for count bar graph
+# if you don't know what to put for the bins, start with a list from 0 to some large number, then reduce the bins
+WORDS_OF_INTEREST = {}
+WORDS_OF_INTEREST["Hesitation words"] = (["you know", "sort of", "kind of", "okay"], [0, 3, 7, 50])
+
+# if people could tell any number of stories they liked, how many they chose to tell is information
+# if you don't know what to put for the bins, start with a list from 1 to some large number, then reduce the bins
+ADD_QUESTION_WITH_NUM_STORIES_TOLD = True
+QUESTION_NAME_FOR_NUM_STORIES_TOLD = "Num stories told"
+BIN_TOPS_FOR_NUM_STORIES_TOLD_QUESTION = [2,4,6,8]
+
 # -----------------------------------------------------------------------------------------------------------------
 # how things look in the output
 # -----------------------------------------------------------------------------------------------------------------
@@ -184,6 +224,15 @@ CORRELATION_COEFF_REPORTING_THRESHOLD = 0.2
 CONTINGENCY_PERCENTAGE_THRESHOLD = 0
 INCLUDE_PERCENTAGES_IN_CONTINGENCY_DIAGRAMS = False
 
+# these are for finding out for which questions correlations vary a lot between answer subsets
+# because there can be so many combinations (scale x scale x question) winnowing saves time
+FLAG_CORRS_FOR_QUESTIONS_WITH_PVALUE_DIFF = 0.5
+LOWER_LIMIT_STORY_NUMBER_FOR_CORR_DIFFS_COMPARISONS = 20
+CORRELATION_COEFF_REPORTING_THRESHOLD_FOR_CORR_DIFFS = 0.4
+SIGNIFICANCE_VALUE_REPORTING_THRESHOLD_FOR_CORR_DIFFS = 0.05
+# if true, will leave all pairs of scales that have to do only with participants
+# (e.g., age vs income) out of comparison (since they are more likely to be connected)
+LEAVE_PARTICIPANT_ONLY_PAIRS_OUT_OF_CORR_DIFFS = True
 
 # if true, draws "companion" histograms for different-meaned subsets of data
 # so you don't have to go looking for them
@@ -193,12 +242,17 @@ DRAW_COMPARISON_HISTOGRAMS_FOR_SKEW_DIFFERENCES = True
 # some choices should be excluded from choice comparisons because they are too small
 EXCLUDE_FROM_CHI_SQUARED_TESTS = ["not sure"]
 
+# for graphs in pairs (A vs B, B vs A) whether to write both combinations or just A vs B
+DRAW_GRAPHS_ON_BOTH_SIDES_OF_BINARY_COMBINATIONS = False
+
 # how to draw slider data
 NUM_HISTOGRAM_BINS = 10
 LOWER_SCALE_EXTREME_FOR_HIGH_LOW_GRAPHS = 10
 UPPER_SCALE_EXTREME_FOR_HIGH_LOW_GRAPHS = 90
 PART_OF_SLIDER_NAME_TO_HIDE_FROM_GRAPHS = None 
 DRAW_TRANSPARENT_DOTS_ON_SCATTER_GRAPHS = True # if few possible points, dots overlap
+DRAW_SCATTER_GRAPHS_WITH_SIZE_CIRCLES = True # if few possible points, show counts at each value as sizes of dots
+HISTOGRAM_MEAN_LINE_WIDTH = 4
 
 # writing to CSV
 CSV_WRITE_AS_SINGLE_COLUMNS = [TYPE_SINGLE_CHOICE, TYPE_SLIDER, TYPE_COMMENT_BOX, TYPE_REGULAR_TEXT_BOX, TYPE_NUMERICAL_TEXT_BOX, TYPE_TERNARY]

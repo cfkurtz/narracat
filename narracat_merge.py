@@ -15,6 +15,7 @@ import os, csv, sys, random, codecs
 
 from narracat_constants import *
 from narracat_utils import *
+from narracat_graph import *
 
 def mergeDataFiles_2():
 	dataFileName = DATA_PATH + "Stories metadata missing info added.csv"

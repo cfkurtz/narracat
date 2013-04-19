@@ -57,7 +57,7 @@ def listFromStringRemovingBlankLines(aString):
 def removeSpecificListItemsFromList(aList, listOfItemsToRemove):
 	newList = []
 	for item in aList:
-		if item in listOfItemsToRemove:
+		if len(listOfItemsToRemove) > 0 and item in listOfItemsToRemove:
 			pass
 		else:
 			newList.append(item)
@@ -108,7 +108,7 @@ def findDigitIn(aString):
 			return letter
 
 def doesNotContainDash(aString):
-	return not "-" in aString
+	return not "-" in aString 
 
 def lighterOrDarkerColor(hexString, increment):
 	if hexString[0] == '#': 
