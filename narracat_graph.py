@@ -10,7 +10,6 @@
 # Methods that graph things
 # -----------------------------------------------------------------------------------------------------------------
 
-from narracat_constants import *
 from narracat_stats import *
 from narracat_data import *
 
