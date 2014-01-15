@@ -98,6 +98,9 @@ STORY_NUMBER_SUFFIX = None # or can specify it by a suffix to the field ID
 MULTIPLE_STORY_TITLE_FIELDS = False
 MULTIPLE_STORY_TEXT_FIELDS = False
 
+# this handles the case where the participant data is entered only on one story instead of on all of them
+PARTICIPANT_DATA_ON_ONE_STORY_ONLY = False
+
 # is the question answered in the data, or do you have to figure it out 
 QUESTION_NUMBER_APPEARS_AS_QUESTION = False
 QUESTION_NUMBER_ID = "Question answered"
@@ -216,7 +219,7 @@ BIN_TOPS_FOR_NUM_STORIES_TOLD_QUESTION = [2,4,6,8]
 # this is for two reasons: to deal with small data sets (in which there may be very weak trends)
 # and to reduce huge numbers of output files produced
 # to see how these impact the particular tests, search for them in the other code files
-LOWER_LIMIT_STORY_NUMBER_FOR_COMPARISONS = 20
+LOWER_LIMIT_STORY_NUMBER_FOR_COMPARISONS = 10
 SIGNIFICANCE_VALUE_REPORTING_THRESHOLD = 0.05
 T_TEST_VALUE_REPORTING_THRESHOLD = 1.0
 SKEW_DIFFERENCE_REPORTING_THRESHOLD = 1.0

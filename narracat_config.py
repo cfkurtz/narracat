@@ -98,6 +98,9 @@ STORY_NUMBER_SUFFIX = None # or can specify it by a suffix to the field ID
 MULTIPLE_STORY_TITLE_FIELDS = False
 MULTIPLE_STORY_TEXT_FIELDS = False
 
+# this handles the case where the participant data is entered only on one story instead of on all of them
+PARTICIPANT_DATA_ON_ONE_STORY_ONLY = False
+
 # is the question answered in the data, or do you have to figure it out 
 QUESTION_NUMBER_APPEARS_AS_QUESTION = False
 QUESTION_NUMBER_ID = "Question answered"
