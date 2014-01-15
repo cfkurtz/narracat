@@ -49,6 +49,7 @@ class TxtboxOut(object):
 	def write(self, txt):
 		self.T.insert(END, "%s" % str(txt))
 		self.T.yview(MOVETO, 1.0)
+		self.T.update() # flush print
 
 class NarracatBrowser(Frame):
 	def __init__(self, master=None, questions=None, participants=None, stories=None):
@@ -71,25 +72,26 @@ class NarracatBrowser(Frame):
 		namesFrame = Frame(self)
 		namesFrame.pack(side=RIGHT, fill=BOTH)
 		
+		self.console = Text(namesFrame, width=30, height=15, relief=SUNKEN, borderwidth=2, font=littleFont)
+		self.console.pack(side=BOTTOM, fill=BOTH, expand=YES)
+		consoleLabel = Label(namesFrame, foreground='blue', text="Output console", font=littleFont).pack(side=BOTTOM, anchor=W)
+				
 		# console for program output information
 		self.useConsoleCheckBoxState = IntVar()
 		useConsoleCheckBox = Checkbutton(namesFrame, variable=self.useConsoleCheckBoxState, text="  Write output to console", font=littleFont)
 		useConsoleCheckBox.pack(side=BOTTOM, anchor=W)
 		useConsoleCheckBox["command"] = self.changeUseConsole
+		useConsoleCheckBox.invoke()
 		
-		self.console = Text(namesFrame, width=30, height=15, relief=SUNKEN, borderwidth=2, font=littleFont)
-		self.console.pack(side=BOTTOM, fill=BOTH, expand=YES)
-		consoleLabel = Label(namesFrame, foreground='blue', text="Output console", font=littleFont).pack(side=BOTTOM, anchor=W)
-				
 		# copy from (Q-A) box lists questions for copying to command line
-		self.copyFrom = Text(namesFrame, width=30, height=15, relief=SUNKEN, borderwidth=2, font=font)
-		self.copyFrom.pack(side=BOTTOM, fill=BOTH, expand=YES)
+		self.copyFrom = Text(namesFrame, width=30, height=10, relief=SUNKEN, borderwidth=2, font=font)
+		self.copyFrom.pack(side=BOTTOM, fill=BOTH, expand=NO)
 		qaLabel = Label(namesFrame, text="Q & A (copy from here)", foreground='blue', font=littleFont).pack(side=BOTTOM, anchor=W)
 		
 		# help box tells you what you can type into command line
-		self.help = Text(namesFrame, width=30, height=15, relief=SUNKEN, borderwidth=2, font=font)
+		self.help = Text(namesFrame, width=30, height=10, relief=SUNKEN, borderwidth=2, font=font)
 		self.help.insert(END, helpText)
-		self.help.pack(side=BOTTOM, fill=BOTH, expand=YES)
+		self.help.pack(side=BOTTOM, fill=BOTH, expand=NO)
 		helpLabel = Label(namesFrame, text="Help on commands", foreground='blue', font=littleFont).pack(side=BOTTOM, anchor=W)
 		
 		outputFrame = Frame(self, width=600, relief=GROOVE, borderwidth=1)
@@ -97,7 +99,7 @@ class NarracatBrowser(Frame):
 	
 		storyTextFrame = Frame(outputFrame, width=600, relief=GROOVE, borderwidth=1)
 		storyTextFrame.pack(side=TOP, fill=BOTH, expand=YES)
-		scrollbar = Scrollbar(storyTextFrame)
+		scrollbar = Scrollbar(storyTextFrame, orient=VERTICAL)
 		scrollbar.pack(side=RIGHT, fill=Y)
 
 		# where stories appear
@@ -105,7 +107,7 @@ class NarracatBrowser(Frame):
 		self.storyText.pack(side=TOP, fill=BOTH, expand=YES)
 		scrollbar.config(command=self.storyText.yview)
 
-		controlFrame = Frame(outputFrame, width=600, height=100, relief=GROOVE, borderwidth=1)
+		controlFrame = Frame(outputFrame, width=500, height=100, relief=GROOVE, borderwidth=1)
 		controlFrame.pack(side=BOTTOM, fill=BOTH, expand=NO)
 		
 		# command line
@@ -176,8 +178,8 @@ class NarracatBrowser(Frame):
 		if self.useConsoleCheckBoxState.get():
 			newout = TxtboxOut(self.console)
 			self.stdout = sys.stdout
-			console = sys.stdout
-			sys.stdout = newout		
+			console = sys.stdout 
+			sys.stdout = newout	
 		else:
 			sys.stdout = self.stdout
 	
