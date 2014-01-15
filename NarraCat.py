@@ -12,15 +12,14 @@
 # where <base_dir> 
 # -----------------------------------------------------------------------------------------------------------------
 
-# RETIRING THIS FILE IN FAVOR OF ONE NAMED THE WAY PY2APP WANTS IT (NARRACAT.PY)
 
 from narracat_launcher import *
 
 def main():
-	
+		
 	root = Tk()
 	root.minsize(300,300)
-	root.geometry("1000x800")
+	root.geometry("800x600")
 	root.title("NarraCat: Tools for Narrative Catalysis")
 	app = NarracatLauncher(master=root, questions=None, participants=None, stories=None)
 	app.mainloop()
