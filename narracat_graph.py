@@ -21,7 +21,9 @@ matplotlib.use('TkAgg') # do this before importing pylab
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 
+from mpl_toolkits import mplot3d
 from mpl_toolkits.mplot3d import axes3d
+
 from matplotlib.patches import Circle, Rectangle
 from matplotlib.collections import PatchCollection
 import matplotlib.cm as colorModule
