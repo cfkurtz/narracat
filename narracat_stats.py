@@ -18,7 +18,11 @@ import scipy
 import scipy.stats as stats
 
 def isNormal(npArray):
-	return stats.normaltest(npArray)[1] >= 0.05
+	# if number of samples is <20, return non-normal (because normal test can't be run below 20)
+	if len(npArray) < 20:
+		return False
+	else:
+		return stats.normaltest(npArray)[1] >= 0.05
  
 def correlationStatsForTwoScales(xValues, yValues, roundValues=True):
 	npArrayX = np.array(xValues)
